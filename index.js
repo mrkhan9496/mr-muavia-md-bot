@@ -117,7 +117,8 @@ const commands = {
     genderdetect: require('./commands/genderdetect'),
     nationality: require('./commands/nationality'),
     fact: require('./commands/fact'),
-    wallpaper: require('./commands/wallpaper')
+    wallpaper: require('./commands/wallpaper'),
+    hp: require('./commands/hp')
 };
 
 
@@ -800,6 +801,7 @@ class BotSession {
                                                 '.gender (name)',
                                                 '.nationality (name)',
                                                 '.wallpaper',
+                                                '.hp (name)',
                                                 '.meme',
                                                 '.8ball (question)',
                                                 '.truth / .dare',
@@ -1021,6 +1023,7 @@ class BotSession {
                                         case 'nationality': await commands.nationality(this.sock, from, msg, q); break;
                                         case 'fact': await commands.fact(this.sock, from, msg); break;
                                         case 'wallpaper': await commands.wallpaper(this.sock, from, msg); break;
+                                        case 'hp': await commands.hp(this.sock, from, msg, q); break;
                                         case 'pair': await pairCommand(this.sock, from, msg, isOwner, args, sessions, BotSession); break;
                                         case 'setprefix': await setprefixCommand(this.sock, from, msg, isAdmin, botData, saveBotData, this.userId, args); break;
                                         case 'islamic': case 'islamicstatus': case 'islamictest':
