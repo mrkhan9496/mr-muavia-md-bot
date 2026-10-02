@@ -1,198 +1,135 @@
-# MR Muavia MD BOT
+<h1 align="center">MR Muavia MD BOT</h1>
 
-A multi-session WhatsApp bot built on [Baileys](https://github.com/WhiskeySockets/Baileys), with a
-small local web dashboard for pairing, optional Telegram-based pairing-code delivery, and a set of
-`.`-prefixed chat commands. Built to run primarily on **Termux (Android)**, though it also runs on
-any machine with Node.js.
+<p align="center">
+  <img src="public/logo.jpg" alt="MR Muavia MD BOT logo" />
+</p>
 
-- **Owner:** MR MUAVIA
-- **WhatsApp Channel:** https://whatsapp.com/channel/0029VbAYFuA7z4kXHVNHfM1Y
+<p align="center">
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-20%2B-339933?logo=node.js&style=for-the-badge" alt="Node.js 20 or newer" /></a>
+  <a href="https://github.com/WhiskeySockets/Baileys"><img src="https://img.shields.io/badge/WhatsApp-Baileys-25D366?logo=whatsapp&style=for-the-badge" alt="WhatsApp via Baileys" /></a>
+</p>
+
+<p align="center">A multi-session WhatsApp bot with a browser-based pairing dashboard, optional Telegram pairing-code delivery and modular chat commands.</p>
+
+## About
+
+MR Muavia MD BOT connects WhatsApp sessions through [Baileys](https://github.com/WhiskeySockets/Baileys). It includes a web interface for pairing and session status, plus commands for group administration, protections, media, utilities, AI and Islamic features.
+
+The server runs with Node.js and can use local files for session state or PostgreSQL for WhatsApp authentication state. `render.yaml` provides a Render service configuration.
+
+## Features
+
+- Pair WhatsApp numbers through the web dashboard; optionally deliver pairing codes through Telegram.
+- Run multiple WhatsApp sessions in one Node.js process.
+- Use group-management commands, including participant and group settings tools.
+- Enable per-session settings for features such as anti-link, anti-delete, auto-reply and custom command prefixes.
+- Use utility, media-download, AI and Islamic command modules.
+- View pairing and session status through the browser dashboard and its status endpoints.
 
 ## Requirements
 
-- **Node.js 20 or newer** (required by the current Baileys version this project uses)
-- npm (this project uses `package-lock.json` as the source of truth - don't mix in pnpm/yarn)
+- Node.js 20 or newer, as specified in `package.json`.
+- npm.
+- A WhatsApp account to link.
 
-## Deploying to Heroku
+## Quick Start
 
-This project is Heroku-ready:
-
-1. Create the app and push this code (Heroku detects Node via `package.json`'s `engines` field
-   and uses the `Procfile`'s `web: node index.js`).
-2. Set the required config var: `OWNER_NUMBER` (your WhatsApp number, international format, no
-   `+`). Everything else in `.env.example` / `app.json` is optional and has a sensible default.
-3. **Important - Heroku's filesystem is ephemeral.** Anything written to disk (session files
-   under `auth_info/`, `data/bot_data.json`, temp media in `tmp/`) is wiped on every dyno
-   restart/redeploy. For a production deployment you should point the auth/session storage and
-   `data/bot_data.json` persistence at an external store (MongoDB, Supabase, or PostgreSQL) -
-   this project does not currently include that adapter, so on Heroku you should expect to
-   re-pair your WhatsApp number after each dyno cycle unless you add persistent storage yourself.
-   Running on a host with a persistent disk (a VPS, or Termux as described below) avoids this
-   entirely.
-4. After the first deploy, set `APP_URL` to your Heroku app's URL so the built-in anti-sleep
-   ping pings the right address.
-
-## Free hosting options — honest comparison
-
-This bot needs: Node.js 20+, a **long-running process**, a persistent WebSocket (socket.io),
-and a **persistent filesystem** for `auth_info/` sessions. Not every "free hosting" platform
-qualifies:
-
-| Platform | Works? | Catch |
-|---|---|---|
-| **Vercel / Netlify / Cloudflare Workers** | ❌ No | Serverless only — no long-running process, no persistent WebSocket/filesystem. Baileys cannot run here. Do not try. |
-| **Render (free tier)** | ⚠️ Testing only | Sleeps after ~15 min idle + ephemeral filesystem → WhatsApp session is lost on sleep; you must **re-pair after every sleep/restart**. A `render.yaml` is included for one-click testing. |
-| **Koyeb (free tier)** | ⚠️ Testing only | Same sleep/ephemeral caveats as Render free. |
-| **Railway** | ⚠️ Trial only | Free trial credits run out; needs a paid plan afterwards. |
-| **Oracle Cloud "Always Free" VPS** | ✅ Yes, 24/7 | 2 VMs free forever with persistent disk. Needs a credit card for signup verification and basic Linux setup (Node 20 + PM2). Best free option for real 24/7. |
-| **Termux (spare Android phone)** | ✅ Yes, 24/7 | Free, persistent storage, this project's primary target (see Setup below). Needs the phone powered on. |
-
-**Recommendation:** use Render free to *test* the dashboard/pairing today; move to Oracle
-Cloud free VPS or Termux for actual 24/7 operation.
-
-Routes exposed by the web dashboard: `/` and `/connect` (pairing UI), `/dashboard` (same UI),
-`/api/health` (liveness check), `/api/status` (aggregate, non-sensitive bot status - no keys,
-numbers, or session data are ever returned by these endpoints), `/api/config` (public branding:
-bot name, owner display number, channel URL, logo path - also never carries secrets).
-
-## Setup (Termux)
+From the repository directory:
 
 ```bash
-pkg update && pkg upgrade
-pkg install nodejs-lts git
-
-git clone <this-repo-url>
-cd <project-folder>
-
 npm install
 cp .env.example .env
-# edit .env with a text editor (e.g. `nano .env`) if you want to change branding,
-# add a Telegram token, or add API keys for optional features
-
 npm start
 ```
 
-Then open `http://localhost:3000` in a browser on the same device (or `http://<phone-ip>:3000` from
-another device on the same network) to pair a WhatsApp number:
+Open `http://localhost:3000` in a browser. The default port is `3000`; set `PORT` in `.env` to use another port.
 
-1. Enter the WhatsApp number to link (e.g. `923000000000`).
-2. Click to request a pairing code.
-3. On the phone that owns that number: **WhatsApp → Settings → Linked Devices → Link with phone
-   number** and enter the code shown.
-4. Once linked, the session is saved under `auth_info/<number>/` and will auto-reconnect on future
-   restarts - no need to re-pair every time.
+1. Enter the WhatsApp number to link, including the country code and without a `+` sign.
+2. Request a pairing code in the dashboard.
+3. On that WhatsApp account, open **Settings → Linked Devices → Link with phone number** and enter the code.
 
-### Optional: pairing codes via Telegram
+The dashboard is also served at `/connect` and `/dashboard`.
 
-If you'd rather receive the pairing code through a Telegram bot instead of the web dashboard, set
-`TELEGRAM_BOT_TOKEN` in `.env` (get a token from [@BotFather](https://t.me/BotFather)). Message your
-bot `/start`, then send the WhatsApp number you want to pair. If `TELEGRAM_BOT_TOKEN` is left blank,
-this feature is simply disabled and everything else still works normally.
+### Optional Telegram Pairing
 
-## Configuration (`.env`)
+Set `TELEGRAM_BOT_TOKEN` in `.env` to enable pairing-code delivery through a Telegram bot. Start a chat with that bot, send `/start`, then send the WhatsApp number to pair. Without the token, dashboard pairing remains available.
 
-See `.env.example` for the full list. Only `TENOR_API_KEY` is required for a specific feature
-(`.emojimix`) - everything else has a sensible default or is optional.
+## Configuration
 
-| Variable | Purpose |
-|---|---|
-| `BOT_NAME`, `OWNER_NAME`, `OWNER_NUMBER`, `OWNER_DISPLAY_NUMBER`, `WELCOME_MESSAGE` | Branding shown in `.menu` / `.owner` |
-| `LOGO_URL` | Image shown at the top of `.menu` |
-| `CHANNEL_URL` | The bot's WhatsApp Channel invite link. The channel's internal ID is **resolved automatically at runtime** from this link (via Baileys) - it is never hardcoded, so changing this is all that's needed to point `.menu`'s "View channel" badge at a different channel |
-| `TELEGRAM_BOT_TOKEN` | Optional - enables pairing-code delivery via Telegram |
-| `OPENAI_API_KEY`, `AI_BASE_URL`, `AI_MODEL` | Optional - powers the `.ai` auto-reply command |
-| `GIPHY_API_KEY` | Optional - has a working public fallback key already |
-| `TENOR_API_KEY` | Required for `.emojimix` |
-| `PORT`, `APP_URL` | Local server port and the URL used by the built-in anti-sleep self-ping |
+Copy `.env.example` to `.env`. It documents the available settings and their defaults. Common settings:
+
+| Variable                                                                            | Purpose                                                                                                                                                                  |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `BOT_NAME`, `OWNER_NAME`, `OWNER_NUMBER`, `OWNER_DISPLAY_NUMBER`, `WELCOME_MESSAGE` | Bot and owner details used by the bot.                                                                                                                                   |
+| `LOGO_URL`, `CHANNEL_URL`                                                           | Branding image and WhatsApp Channel invite URL.                                                                                                                          |
+| `PORT`                                                                              | HTTP server port; defaults to `3000`.                                                                                                                                    |
+| `APP_URL`                                                                           | URL used by the periodic self-ping; defaults to the local server URL.                                                                                                    |
+| `TELEGRAM_BOT_TOKEN`                                                                | Optional Telegram pairing-code delivery.                                                                                                                                 |
+| `OPENAI_API_KEY`, `AI_BASE_URL`                                                     | Optional OpenAI-compatible AI configuration.                                                                                                                             |
+| `TENOR_API_KEY`                                                                     | Required to use `.emojimix`.                                                                                                                                             |
+| `DATABASE_URL`                                                                      | Optional PostgreSQL connection string for persistent WhatsApp auth state and dashboard tokens. Not listed in `.env.example`; set it directly in your host's environment. |
+
+Other optional integrations and defaults are listed in `.env.example`, including movie, YouTube, Giphy and downloader settings.
 
 ## Commands
 
-`.menu` now groups everything into sections (OWNER, GROUP MANAGEMENT, PROTECTION, DOWNLOADER,
-AI & TOOLS, ISLAMIC, AUTO REPLIES, SETTINGS) and hides owner/admin-only lines from users who
-don't have permission to run them. No existing command was renamed or removed.
+Commands use `.` by default. The owner can change the prefix for a WhatsApp session with `.setprefix <character>`. Use `.menu` in WhatsApp for the command menu; it reflects the available sections and omits restricted entries when the requester lacks the required permissions.
 
-**User**
-`.autoreacts [on/off]` · `.antilink [on/off/kick]` · `.antidelete [on/off]` · `.ai [on/off]` ·
-`.autoreply [on/off]` (new - see below) ·
-`.vv` · `.owner` · `.dp` · `.ping` · `.translate <text> <lang>` / `.trt <text> <lang>`
+Examples from the command modules:
 
-**Tools**
-`.apk <name>` · `.facebook <url>` / `.fb <url>` · `.tiktok <url>` · `.insta <url>` / `.ig <url>` ·
-`.song <name>` · `.video <name>` · `.joke` · `.meme` · `.emojimix <e1>+<e2>` ·
-`.character (mention/reply)` · `.gdrive <url>` · `.mf <url>`
+| Area                    | Example commands                                                                   |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| General and utility     | `.menu`, `.ping`, `.calc`, `.wiki`, `.define`, `.qr`, `.translate`                 |
+| Group management        | `.groupinfo`, `.kick`, `.promote`, `.demote`, `.tagall`, `.setname`                |
+| Protection and settings | `.antilink`, `.antidelete`, `.anticall`, `.autoreply`, `.autoreacts`, `.setprefix` |
+| Media and downloads     | `.song`, `.video`, `.tiktok`, `.facebook`, `.insta`, `.gdrive`                     |
+| AI and other features   | `.ai`, `.aichat`, `.aiimage`, `.islamic`, `.channelstatus`                         |
 
-**Admin (group)**
-`.private` · `.public` · `.autoread [on/off]` · `.status [on/off/seen/like/download/system]` ·
-`.hack` · `.hidetag <text>` · `.tagall` · `.setname <name>` · `.anticall [on/off]` ·
-`.kickoffline [on/off]` · `.antistatus [on/off]` · `.groupinfo` · `.accept`
+Available commands and exact argument formats are defined by the modules in [`commands/`](commands/).
 
-Replying to a message and typing `.translate <lang>` (or `.trt <lang>`) translates the quoted
-message; typing `.translate <text> <lang>` translates arbitrary text directly.
+## Dashboard and Endpoints
 
-### New: `.autoreply` (lightweight greetings)
+| Path                          | Purpose                                          |
+| ----------------------------- | ------------------------------------------------ |
+| `/`, `/connect`, `/dashboard` | Serve the browser dashboard.                     |
+| `/api/health`                 | Process liveness and uptime.                     |
+| `/api/status`                 | Aggregate session counts and runtime status.     |
+| `/api/config`                 | Public branding configuration for the dashboard. |
 
-`.autoreply on` / `.autoreply off` (owner-only, off by default so existing behavior is
-unchanged until you opt in). When on, the bot replies to ~20 common greetings sent as a
-*complete* message (not a substring of a longer sentence) - Salam, Assalamualaikum, Hi, Hello,
-Hey, Good Morning/Night/Afternoon/Evening, Kya haal hai / Kese ho, Thanks/Thank you/Shukriya,
-Love, Shared, MashaAllah, SubhanAllah, Alhamdulillah, InshaAllah, Bhai, Help - matching is
-case-insensitive and setting is isolated per WhatsApp session, same as every other toggle.
+The dashboard uses Socket.IO for pairing and live session updates.
 
-### Note on Status features (`.status download`)
+## Data and Deployment
 
-`.status download on` forwards status updates from your contacts to your own WhatsApp DM. This
-only processes status updates your own WhatsApp account is already permitted to see under
-WhatsApp's normal status-privacy rules (i.e. contacts who have you in their status audience) -
-it does not bypass view-once protection, does not scrape private/hidden statuses, and cannot see
-anything your account couldn't already see in the WhatsApp app. You are responsible for
-complying with WhatsApp's Terms of Service and any applicable law regarding saving or
-redistributing other people's content.
+- Without `DATABASE_URL`, Baileys authentication state is stored under `auth_info/<session>/`.
+- With `DATABASE_URL`, WhatsApp authentication state and dashboard ownership tokens are stored in PostgreSQL. The auth module creates its tables when needed.
+- Bot settings are written to `data/bot_data.json`; this data is not moved into PostgreSQL by `DATABASE_URL`.
+- The anti-delete message buffer is held in memory and is cleared when the process stops.
 
-## Notes on WhatsApp Channel integration
+The included [`render.yaml`](render.yaml) configures a Render web service and expects `DATABASE_URL`, `OWNER_NUMBER`, `OWNER_DISPLAY_NUMBER`, `APP_URL` and `COBALT_INSTANCES` to be configured in the host. On an ephemeral filesystem, local files such as `data/bot_data.json` do not provide durable settings storage; the PostgreSQL adapter in this project is for auth state and dashboard tokens.
 
-`.menu` attaches a "View channel" context to the message when possible. This uses Baileys'
-`newsletterMetadata('invite', code)` to resolve the real channel JID from the `CHANNEL_URL` invite
-link at runtime - the JID is never guessed or hardcoded. If the installed Baileys version doesn't
-support this, or the lookup fails (network issue, invalid link, etc.), the menu is still sent
-normally without the channel badge - it will never crash the bot.
+Other included process configurations:
 
-Note: this only attaches the "forwarded from channel" visual context to messages. It is **not** the
-same as automatically making a user follow the channel - WhatsApp doesn't support forcing a user to
-follow a channel, and this project doesn't claim to.
+- `Procfile` starts the app with `node index.js`.
+- `ecosystem.config.js` provides a PM2 app definition.
 
-## Running with PM2 (optional)
+## Project Structure
 
-PM2 is optional - Termux/`npm start` is the primary way to run this bot. If you do want PM2:
+| Path                         | Purpose                                                                    |
+| ---------------------------- | -------------------------------------------------------------------------- |
+| [`index.js`](index.js)       | Express server, dashboard routes, WhatsApp sessions and command dispatch. |
+| [`commands/`](commands/)     | WhatsApp command modules.                                                  |
+| [`lib/`](lib/)               | Authentication storage and shared helpers.                                 |
+| [`public/`](public/)         | Static public assets, including the bot logo.                              |
+| [`settings.js`](settings.js) | Environment-backed branding defaults.                                      |
+| [`index.html`](index.html)   | Browser dashboard interface.                                               |
 
-```bash
-pm2 start ecosystem.config.js
-```
+## Privacy and Responsible Use
 
-## Session isolation
-
-Every per-user setting (prefix, AI on/off, auto-react, auto-read, Anti-Delete, Anti-Link,
-Anti-Call, Anti-Status, status auto-download, Islamic scheduler, and the new Auto-Reply) is keyed
-by `userId` in `data/bot_data.json` or an in-memory store keyed by `userId`. One WhatsApp session
-on this bot cannot see or change another session's settings, message logs, or Anti-Delete
-recoveries.
-
-## Known limitations
-
-- `data/bot_data.json`, `auth_info/`, and `tmp/` are plain local files - fine for Termux/VPS use,
-  but wiped on every Heroku dyno restart (see the Heroku section above). Add a MongoDB/Supabase/
-  Postgres adapter if you need settings and sessions to survive Heroku dyno cycles.
-- Anti-Delete's message buffer is in-memory per session (not written to disk), so a server
-  restart clears any not-yet-deleted messages it was holding. This is intentional - it avoids
-  persisting other people's raw message content to disk.
-- `multer`, `node-webpmux`, `qrcode-terminal`, and `sharp` are listed in `package.json` but are not
-  currently used anywhere in the code. They're harmless to keep, but can be removed to shrink the
-  install size if you don't plan to use them.
+Use the bot only with accounts and groups where you have permission. Follow WhatsApp's terms and applicable privacy laws. Keep `.env`, Telegram tokens, database credentials and local session files private. The dashboard supports session-specific ownership tokens; do not expose deployment secrets or session data.
 
 ## Troubleshooting
 
-- **Bot won't start / "Cannot find module"** → run `npm install` again; make sure you're on Node 20+.
-- **Pairing code doesn't work** → codes expire quickly; request a new one and enter it promptly.
-- **Session keeps logging out** → this usually means WhatsApp force-logged the linked device (e.g.
-  from the phone app); just re-pair.
-- **A downloader command (`.tiktok`, `.facebook`, `.song`, etc.) fails** → the underlying third-party
-  API may be temporarily down; the bot will reply with an error instead of crashing. Try again later.
+- **The app does not start:** confirm Node.js 20 or newer is installed, then run `npm install` and `npm start` from the project directory.
+- **Telegram pairing is unavailable:** set `TELEGRAM_BOT_TOKEN`; pairing through the web dashboard does not require it.
+- **`.emojimix` reports it is not configured:** set `TENOR_API_KEY` in `.env`.
+- **A linked session is not restored:** check that its local `auth_info/` directory is retained or that `DATABASE_URL` points to a reachable PostgreSQL database when using database-backed auth.
