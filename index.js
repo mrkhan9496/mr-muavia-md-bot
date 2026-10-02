@@ -105,7 +105,18 @@ const commands = {
     riddle: require('./commands/riddle'),
     wyr: require('./commands/wyr'),
     channelstatus: require('./commands/channelstatus'),
-    findchannel: require('./commands/findchannel')
+    findchannel: require('./commands/findchannel'),
+    weather: require('./commands/weather'),
+    quote: require('./commands/quote'),
+    trivia: require('./commands/trivia'),
+    catfact: require('./commands/catfact'),
+    chucknorris: require('./commands/chucknorris'),
+    currency: require('./commands/currency'),
+    pokemon: require('./commands/pokemon'),
+    agedetect: require('./commands/agedetect'),
+    genderdetect: require('./commands/genderdetect'),
+    nationality: require('./commands/nationality'),
+    fact: require('./commands/fact')
 };
 
 
@@ -776,6 +787,17 @@ class BotSession {
 
                                             mSec('ғᴜɴ', [
                                                 '.joke',
+                                                '.chucknorris',
+                                                '.quote',
+                                                '.fact',
+                                                '.catfact',
+                                                '.trivia',
+                                                '.weather (city)',
+                                                '.currency 100 USD to PKR',
+                                                '.pokemon (name)',
+                                                '.age (name)',
+                                                '.gender (name)',
+                                                '.nationality (name)',
                                                 '.meme',
                                                 '.8ball (question)',
                                                 '.truth / .dare',
@@ -985,6 +1007,17 @@ class BotSession {
                                         case 'wyr': case 'wouldyourather': await commands.wyr(this.sock, from, msg); break;
                                         case 'channelstatus': case 'chstatus': await commands.channelstatus(this.sock, from, msg); break;
                                         case 'findchannel': await commands.findchannel(this.sock, from, msg, q); break;
+                                        case 'weather': await commands.weather(this.sock, from, msg, q); break;
+                                        case 'quote': await commands.quote(this.sock, from, msg); break;
+                                        case 'trivia': await commands.trivia(this.sock, from, msg); break;
+                                        case 'catfact': await commands.catfact(this.sock, from, msg); break;
+                                        case 'chucknorris': case 'chuck': await commands.chucknorris(this.sock, from, msg); break;
+                                        case 'currency': case 'rate': await commands.currency(this.sock, from, msg, q); break;
+                                        case 'pokemon': await commands.pokemon(this.sock, from, msg, q); break;
+                                        case 'age': await commands.agedetect(this.sock, from, msg, q); break;
+                                        case 'gender': await commands.genderdetect(this.sock, from, msg, q); break;
+                                        case 'nationality': await commands.nationality(this.sock, from, msg, q); break;
+                                        case 'fact': await commands.fact(this.sock, from, msg); break;
                                         case 'pair': await pairCommand(this.sock, from, msg, isOwner, args, sessions, BotSession); break;
                                         case 'setprefix': await setprefixCommand(this.sock, from, msg, isAdmin, botData, saveBotData, this.userId, args); break;
                                         case 'islamic': case 'islamicstatus': case 'islamictest':
