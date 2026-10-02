@@ -118,7 +118,12 @@ const commands = {
     nationality: require('./commands/nationality'),
     fact: require('./commands/fact'),
     wallpaper: require('./commands/wallpaper'),
-    hp: require('./commands/hp')
+    hp: require('./commands/hp'),
+    ayah: require('./commands/ayah'),
+    dog: require('./commands/dog'),
+    advice: require('./commands/advice'),
+    yesno: require('./commands/yesno'),
+    bored: require('./commands/bored')
 };
 
 
@@ -802,6 +807,11 @@ class BotSession {
                                                 '.nationality (name)',
                                                 '.wallpaper',
                                                 '.hp (name)',
+                                                '.ayah',
+                                                '.dog',
+                                                '.advice',
+                                                '.yesno [sawal]',
+                                                '.bored',
                                                 '.meme',
                                                 '.8ball (question)',
                                                 '.truth / .dare',
@@ -1024,6 +1034,11 @@ class BotSession {
                                         case 'fact': await commands.fact(this.sock, from, msg); break;
                                         case 'wallpaper': await commands.wallpaper(this.sock, from, msg); break;
                                         case 'hp': await commands.hp(this.sock, from, msg, q); break;
+                                        case 'ayah': await commands.ayah(this.sock, from, msg); break;
+                                        case 'dog': await commands.dog(this.sock, from, msg); break;
+                                        case 'advice': await commands.advice(this.sock, from, msg); break;
+                                        case 'yesno': await commands.yesno(this.sock, from, msg, q); break;
+                                        case 'bored': await commands.bored(this.sock, from, msg); break;
                                         case 'pair': await pairCommand(this.sock, from, msg, isOwner, args, sessions, BotSession); break;
                                         case 'setprefix': await setprefixCommand(this.sock, from, msg, isAdmin, botData, saveBotData, this.userId, args); break;
                                         case 'islamic': case 'islamicstatus': case 'islamictest':
