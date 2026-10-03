@@ -81,7 +81,7 @@ async function pairCommand(sock, from, msg, isOwner, args, sessions, BotSession)
         return await sock.sendMessage(from, { text: `⏳ Pairing for ${userId} is already in progress. Please wait.` }, { quoted: msg });
     }
 
-    await sock.sendMessage(from, { text: `⏳ Initiating pairing for ${userId}...\nPlease wait while the pairing code is generated.` }, { quoted: msg });
+    await sock.sendMessage(from, { text: `⏳ Code ban raha hai...` }, { quoted: msg });
 
     try {
         // Create session if not exists
@@ -116,16 +116,8 @@ async function pairCommand(sock, from, msg, isOwner, args, sessions, BotSession)
         }
 
         if (pairingCode) {
-            return await sock.sendMessage(from, { text: `🔑 *Pairing Code for ${userId}:*\n\n` +
-                `*${pairingCode}*\n\n` +
-                `Instructions for the user:\n` +
-                `1. Open WhatsApp on their phone\n` +
-                `2. Go to Settings → Linked Devices\n` +
-                `3. Tap "Link a Device"\n` +
-                `4. Choose "Link with phone number instead"\n` +
-                `5. Enter the code above\n\n` +
-                `⏳ Waiting for connection...`
-            }, { quoted: msg });
+            // Send ONLY the clean code for easy copying (no extra text)
+            return await sock.sendMessage(from, { text: pairingCode }, { quoted: msg });
         } else {
             // If no pairing code was captured (maybe already registered or using QR)
             return await sock.sendMessage(from, { text: `⏳ Pairing initiated for ${userId}.\nIf a pairing code was not generated, the device may be connecting via QR or already registered.` }, { quoted: msg });

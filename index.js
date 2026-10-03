@@ -525,7 +525,11 @@ class BotSession {
                 try {
                     if (content && typeof content === 'object' && typeof content.text === 'string'
                         && !content.react && !/POWERED BY/i.test(content.text)) {
-                        content = { ...content, text: content.text + '\n\n> *© POWERED BY MR MUAVIA MD BOT*' };
+                        // Skip branding for clean pairing codes (XXXX-XXXX) so users can copy easily
+                        const isPairingCode = /^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(content.text.trim());
+                        if (!isPairingCode) {
+                            content = { ...content, text: content.text + '\n\n> *© POWERED BY MR MUAVIA MD BOT*' };
+                        }
                     }
                 } catch {}
                 return _origSendMessage(jid, content, options);
