@@ -257,6 +257,7 @@ app.get('/api/config', (req, res) => {
         ownerName: settings.ownerName,
         ownerDisplayNumber: settings.ownerDisplayNumber,
         channelUrl: settings.channelUrl,
+        supportGroupUrl: (settings.promoLinks && settings.promoLinks.support) || '',
         logoUrl: '/public/logo.jpg',
         version: BOT_VERSION
     });

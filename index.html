@@ -301,6 +301,7 @@
 
   <div class="card">
     <a class="channel-btn" id="channelLink" href="#" target="_blank" rel="noopener">📢 Join Our WhatsApp Channel</a>
+    <a class="channel-btn" id="supportGroupLink" href="#" target="_blank" rel="noopener" style="margin-top:8px">👥 Join Support Group — Bot Features Sikho</a>
   </div>
 
   <div class="footer">
@@ -372,6 +373,8 @@
   fetch('/api/config').then(function(r){return r.json();}).then(function(c){
     dashBotName.textContent=c.botName||'MR MUAVIA MD BOT';
     if(c.channelUrl){channelLink.href=c.channelUrl;}
+    var sg=$('supportGroupLink');
+    if(sg){ if(c.supportGroupUrl){ sg.href=c.supportGroupUrl; } else { sg.style.display='none'; } }
     if(c.version){verTxt.textContent=c.version;}
   }).catch(function(){});
 
