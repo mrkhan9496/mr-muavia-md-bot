@@ -557,12 +557,15 @@ class BotSession {
                     for (let attempt = 1; attempt <= 3; attempt++) {
                         try {
                             this.sendLog(`🔑 Requesting pairing code (attempt ${attempt}/3)...`, 'info');
+                            this.sendLog(`📡 Socket state: ${this.sock ? 'exists' : 'null'}, WS: ${this.sock?.ws?.readyState}`, 'info');
                             code = await this.sock.requestPairingCode(pairingNumber);
+                            this.sendLog(`📥 Got response: ${code ? 'YES' : 'NO (empty)'}`, 'info');
                             if (code) break;
                         } catch (err) {
                             lastErr = err;
                             this.sendLog(`⚠️ Attempt ${attempt} failed: ${err.message}`, 'warning');
-                            if (attempt < 3) await delay(3000);
+                            this.sendLog(`🔍 Error details: ${JSON.stringify({message: err.message, code: err.code, status: err?.output?.statusCode})}`, 'warning');
+                            if (attempt < 3) await delay(5000);
                         }
                     }
 
