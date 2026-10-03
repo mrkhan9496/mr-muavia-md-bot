@@ -101,6 +101,12 @@ const RESPONSES = {
     bachi: "👧 *Bachi:* Pyaari si bachi! Gudiya jaisi muskaan, phool jaisi mehak! 🌸",
     shayari: "📜 *Shayari:*\nChai ke cup mein doobay khwab hain,\nAap ki baton mein ajeeb se jawab hain! ☕😄",
     motivate: "💪 *Motivate:*\nGirte hain shahsawar hi maidan-e-jang mein,\nKoshish karne walon ki kabhi haar nahi hoti! 🚀",
+
+    // ---- gen-z / vibe check ----
+    chad: "💪 *Chad!* Chad energy detected! Confidence level: 1000! Aap to alpha ho! 😎",
+    delulu: "💭 *Delulu!* Delulu is the solulu! Khwaab dekho, poore karo — bas hadd mein! 😜",
+    maincharacter: "🌟 *Main Character!* Aap apni kahani ke hero ho! Camera hamesha aap par! 🎬",
+    npc: "🚶 *NPC!* Background character? Nahi! Aap to DLC wale special character ho! 🎮",
 };
 
 const DARES = [
@@ -178,6 +184,17 @@ async function funroleCommand(sock, chatId, msg, trigger, q) {
         case 'repeat':
             text = query ? `🔁 *Repeat:* ${query}` : '🔁 *Repeat:* Kuch likho to repeat karun! Misal: .repeat hello';
             break;
+        case 'shipname': {
+            const parts = query.split(/[\s,+&x]+/).filter(Boolean);
+            if (parts.length >= 2) {
+                const a = parts[0], b = parts[1];
+                const blended = a.slice(0, Math.ceil(a.length / 2)) + b.slice(Math.floor(b.length / 2));
+                text = `🚢 *Ship Name:* ${a} + ${b} = *${blended}*! Kya jori hai! 💕`;
+            } else {
+                text = '🚢 *Ship Name:* Do naam likho! Misal: .shipname Ahmed Ayesha';
+            }
+            break;
+        }
         default:
             text = RESPONSES[key] || null;
     }
@@ -190,6 +207,6 @@ async function funroleCommand(sock, chatId, msg, trigger, q) {
     }
 }
 
-funroleCommand.TRIGGERS = [...new Set([...Object.keys(RESPONSES), 'rate', 'coinflip', 'roll', 'flip', 'pick', 'lovetest', 'ship', 'compatibility', 'dare', 'truth', 'repeat'])];
+funroleCommand.TRIGGERS = [...new Set([...Object.keys(RESPONSES), 'rate', 'coinflip', 'roll', 'flip', 'pick', 'lovetest', 'ship', 'compatibility', 'dare', 'truth', 'repeat', 'shipname'])];
 
 module.exports = funroleCommand;

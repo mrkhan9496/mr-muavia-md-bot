@@ -46,6 +46,11 @@ const commands = {
     funrole: require('./commands/funrole'),
     audiofx: require('./commands/audiofx'),
     aialias: require('./commands/aialias'),
+    aialias2: require('./commands/aialias2'),
+    funtext2: require('./commands/funtext2'),
+    dlalias2: require('./commands/dlalias2'),
+    misc2: require('./commands/misc2'),
+    fonts2: require('./commands/fonts2'),
     corecmds: require('./commands/core'),
     stickercmds: require('./commands/sticker'),
     modcmds: require('./commands/moderation'),
@@ -684,6 +689,39 @@ class BotSession {
                 }
             });
 
+            // Welcome/Goodbye: per-group messages set via .setwelcome/.setgoodbye
+            // (stored in botData.welcome / botData.goodbye by commands/misc2.js).
+            this.sock.ev.on('group-participants.update', async (update) => {
+                try {
+                    const chatId = update.id;
+                    if (!chatId || !chatId.endsWith('@g.us')) return;
+                    const action = update.action; // 'add' | 'remove' | ...
+                    for (const participant of (update.participants || [])) {
+                        const num = String(participant).split('@')[0].split(':')[0];
+                        let groupName = '';
+                        try {
+                            const meta = await this.sock.groupMetadata(chatId);
+                            groupName = meta.subject || '';
+                        } catch {}
+                        if (action === 'add') {
+                            const tpl = botData.welcome && botData.welcome[this.userId] && botData.welcome[this.userId][chatId];
+                            if (tpl) {
+                                const text = String(tpl).replace(/\{user\}/g, '@' + num).replace(/\{group\}/g, groupName);
+                                await this.sock.sendMessage(chatId, { text, mentions: [participant] });
+                            }
+                        } else if (action === 'remove') {
+                            const tpl = botData.goodbye && botData.goodbye[this.userId] && botData.goodbye[this.userId][chatId];
+                            if (tpl) {
+                                const text = String(tpl).replace(/\{user\}/g, '@' + num).replace(/\{group\}/g, groupName);
+                                await this.sock.sendMessage(chatId, { text, mentions: [participant] });
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('welcome/goodbye hook error:', e.message);
+                }
+            });
+
 
 
             this.sock.ev.on('messages.upsert', async (m) => {
@@ -862,348 +900,381 @@ class BotSession {
                                             // Menu is built as sections; owner/admin-only sections and lines
                                             // are only appended when the requester actually has that permission,
                                             // so regular users never even see commands they can't run.
-                                            // Style: boxed sections with ✦ bullets (KHANTHEHACKER-style layout,
-                                            // our own MR MUAVIA branding).
+                                            // Style: JAWAD-MD layout (our own MR MUAVIA branding).
+                                            const _scMap = {a:'ᴀ',b:'ʙ',c:'ᴄ',d:'ᴅ',e:'ᴇ',f:'ғ',g:'ɢ',h:'ʜ',i:'ɪ',j:'ᴊ',k:'ᴋ',l:'ʟ',m:'ᴍ',n:'ɴ',o:'ᴏ',p:'ᴘ',q:'ǫ',r:'ʀ',s:'s',t:'ᴛ',u:'ᴜ',v:'ᴠ',w:'ᴡ',x:'x',y:'ʏ',z:'ᴢ'};
+                                            const toSmallCaps = (s) => String(s || '').toLowerCase().split('').map(ch => _scMap[ch] || ch).join('');
                                             const menuSections = [];
-                                            const mSec = (title, cmds) => {
-                                                const body = cmds.filter(Boolean).map(c => `┃ ✦ ${c}`).join('\n');
-                                                if (!body) return;
-                                                menuSections.push(
-                                                    `╭━━━〔 ⚡ *${title}* 〕━━━┈⊷\n` +
-                                                    body + '\n' +
-                                                    `╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━┈⊷`
-                                                );
+                                            const jSec = (title, cmds) => {
+                                                const lines = (cmds || []).filter(Boolean).map(c => `*┋ ⬡ ${toSmallCaps(c)}*`);
+                                                if (!lines.length) return;
+                                                menuSections.push('`『 ' + title + ' 』`\n╭───────────────────⊷\n' + lines.join('\n') + '\n╰───────────────────⊷');
                                             };
 
-                                            mSec('ᴍᴀɪɴ', [
-                                                '.menu',
-                                                '.ping',
-                                                '.runtime',
-                                                '.uptime',
-                                                '.owner',
+                                            jSec('MAIN', [
+                                                'menu',
+                                                'ping',
+                                                'runtime',
+                                                'uptime',
+                                                'owner',
                                             ]);
 
-                                            mSec('ᴀɪ', [
-                                                '.ai [query]',
-                                                '.chatgpt',
-                                                '.gpt',
-                                                '.gpt5',
-                                                '.gemini',
-                                                '.bard',
-                                                '.ask',
-                                                '.bot',
-                                                '.deepseek',
-                                                '.copilot',
-                                                '.codeai',
-                                                '.felo',
-                                                '.brainai',
-                                                '.claudeai',
-                                                '.metai',
-                                                '.perplexity',
-                                                '.jawad',
-                                                '.dj',
-                                                '.professor',
-                                                '.comedy',
-                                                '.studyai',
-                                                '.aiimage (prompt)',
-                                                '.ai on/off',
+                                            jSec('AI', [
+                                                'ai',
+                                                'chatgpt',
+                                                'gpt',
+                                                'gpt5',
+                                                'gemini',
+                                                'bard',
+                                                'ask',
+                                                'bot',
+                                                'deepseek',
+                                                'copilot',
+                                                'codeai',
+                                                'felo',
+                                                'brainai',
+                                                'claudeai',
+                                                'metai',
+                                                'perplexity',
+                                                'jawad',
+                                                'dj',
+                                                'professor',
+                                                'comedy',
+                                                'studyai',
+                                                'aiimage',
+                                                'aion',
+                                                'aioff',
+                                                'aiclear',
+                                                ...commands.aialias2.TRIGGERS,
                                             ]);
 
-                                            mSec('ᴅᴏᴡɴʟᴏᴀᴅ', [
-                                                '.tiktok',
-                                                '.tiktok2',
-                                                '.tiktok3 (url)',
-                                                '.insta',
-                                                '.igdl',
-                                                '.igdl2',
-                                                '.igdl3 (url)',
-                                                '.facebook (url)',
-                                                '.song (name)',
-                                                '.video (name)',
-                                                '.apk (name)',
-                                                '.gdrive (url)',
-                                                '.mf (url)',
-                                                '.movie (name)',
+                                            jSec('ANIME', [
+                                                'waifu',
+                                                'neko',
+                                                'megumin',
+                                                'animegirl',
+                                                'animegirl1',
+                                                'animegirl2',
+                                                'animegirl3',
+                                                'animegirl4',
+                                                'animegirl5',
                                             ]);
 
-                                            mSec('ᴀᴜᴅɪᴏ', [
-                                                '.bass',
-                                                '.deep',
-                                                '.smooth',
-                                                '.fat (reply audio)',
-                                                '.slow',
-                                                '.fast',
-                                                '.nightcore',
-                                                '.chipmunk',
-                                                '.robot',
-                                                '.radio',
-                                                '.demon',
-                                                '.baby',
-                                                '.reverse',
-                                                '.earrape',
-                                                '.blown',
-                                                '.tupai',
-                                                '.tomp3',
-                                                '.toptt (reply audio)',
-                                                '.tts (text)',
+                                            jSec('FONTS', [
+                                                ...commands.fonts2.TRIGGERS,
                                             ]);
 
-                                            mSec('ғᴜɴ ᴛᴇxᴛ', [
-                                                '.ishqmeter',
-                                                '.andhaishq',
-                                                '.lafzmohabbat',
-                                                '.pehlinazar',
-                                                '.dillagi',
-                                                '.khoobsurat',
-                                                '.dhadkan',
-                                                '.pehlaakhat',
-                                                '.ziddidil',
-                                                '.yaadaata',
-                                                '.taubatauba',
-                                                '.pehlamuhabbat',
-                                                '.gulabbhejo',
-                                                '.aankhein',
-                                                '.shayarban',
-                                                '.jaan',
-                                                '.qismatwala',
-                                                '.jhoothpyaar',
-                                                '.nazarutarao',
-                                                '.romanticbakwaas',
-                                                '.dilkhol',
-                                                '.tangkarna',
-                                                '.smilechurao',
-                                                '.mohabbatteri',
-                                                '.perfectmatch',
-                                                '.raazkhola',
-                                                '.taqdir',
-                                                '.personalitytest',
-                                                '.superpower',
-                                                '.pastlife',
-                                                '.darksecret',
-                                                '.celebmatch',
-                                                '.lifebattery',
-                                                '.desimom',
-                                                '.desidad',
-                                                '.khanajudge',
-                                                '.rishtaaunt',
-                                                '.shadiprediction',
-                                                '.stresslevel',
-                                                '.motivationalslap',
-                                                '.pizzaorbiryani',
-                                                '.emotionaldamage',
-                                                '.pakfact',
-                                                '.storygenerate',
-                                                '.botroast',
-                                                '.weeklyreport',
-                                                '.soulcolor',
-                                                '.desiwisdom',
-                                                '.kindness',
-                                                '.newcmds',
-                                                '.compliment2',
-                                                '.naammatlab',
-                                                '.numbergame',
-                                                '... +120 more! Try any!',
+                                            jSec('DOWNLOAD', [
+                                                'tiktok',
+                                                'tiktok2',
+                                                'tiktok3',
+                                                'insta',
+                                                'igdl',
+                                                'igdl2',
+                                                'igdl3',
+                                                'facebook',
+                                                'song',
+                                                'video',
+                                                'apk',
+                                                'gdrive',
+                                                'mf',
+                                                'movie',
+                                                'twitter',
+                                                'download',
+                                                'gitclone',
+                                                'surah',
                                             ]);
 
-                                            mSec('ɢʀᴏᴜᴘ', [
-                                                '.kick (reply/number)',
-                                                '.mute',
-                                                '.unmute',
-                                                '.tagall',
-                                                '.tagadmins',
-                                                '.tag',
-                                                ...(isAdmin ? ['.hidetag'] : []),
-                                                '.groupstatus',
-                                                '.ginfo',
-                                                ...(isAdmin ? ['.gcpp (reply image)', '.updategname', '.updategdesc'] : []),
-                                                '.link',
-                                                '.invite',
-                                                ...(isAdmin ? ['.poll Q? | Opt1 | Opt2'] : []),
-                                                '.accept',
-                                                '.acceptall',
-                                                '.active [on/off]',
-                                                ...(isOwner ? ['.newgc name | numbers', '.join (link)', '.out', '.end confirm'] : []),
+                                            jSec('AUDIO', [
+                                                'bass',
+                                                'deep',
+                                                'smooth',
+                                                'fat',
+                                                'slow',
+                                                'fast',
+                                                'nightcore',
+                                                'chipmunk',
+                                                'robot',
+                                                'radio',
+                                                'demon',
+                                                'baby',
+                                                'reverse',
+                                                'earrape',
+                                                'blown',
+                                                'tupai',
+                                                'tomp3',
+                                                'toptt',
+                                                'tts',
                                             ]);
 
-                                            mSec('ғᴜɴ', [
-                                                '.joke',
-                                                '.chucknorris',
-                                                '.quote',
-                                                '.fact',
-                                                '.catfact',
-                                                '.trivia',
-                                                '.weather (city)',
-                                                '.currency 100 USD to PKR',
-                                                '.pokemon (name)',
-                                                '.age (name)',
-                                                '.gender (name)',
-                                                '.nationality (name)',
-                                                '.wallpaper',
-                                                '.hp (name)',
-                                                '.ayah',
-                                                '.dog',
-                                                '.advice',
-                                                '.yesno [sawal]',
-                                                '.bored',
-                                                '.meme',
-                                                '.8ball (question)',
-                                                '.truth',
-                                                '.dare',
-                                                '.riddle',
-                                                '.wyr',
-                                                '.character (mention)',
-                                                '.dad',
-                                                '.mom',
-                                                '.bhai',
-                                                '.bahan',
-                                                '.wife',
-                                                '.husband',
-                                                '.bestfriend',
-                                                '.enemy',
-                                                '.crush',
-                                                '.teacher',
-                                                '.king',
-                                                '.queen',
-                                                '.boss',
-                                                '.hero',
-                                                '.angel',
-                                                '.devil',
-                                                '.hug',
-                                                '.slap',
-                                                '.kiss',
-                                                '.pat',
-                                                '.poke',
-                                                '.dance',
-                                                '.roast',
-                                                '.compliment',
-                                                '.lovetest',
-                                                '.ship',
-                                                '.pickup',
-                                                '.flirt',
-                                                '.shayari',
-                                                '.motivate',
-                                                '.emojimix (e1+e2)',
-                                                '.flip',
-                                                '.coinflip',
-                                                '.roll [NdM]',
-                                                '.dice',
-                                                '.dp',
-                                                '.hack',
+                                            jSec('FUN TEXT', [
+                                                'ishqmeter',
+                                                'andhaishq',
+                                                'lafzmohabbat',
+                                                'pehlinazar',
+                                                'dillagi',
+                                                'khoobsurat',
+                                                'dhadkan',
+                                                'pehlaakhat',
+                                                'ziddidil',
+                                                'yaadaata',
+                                                'taubatauba',
+                                                'pehlamuhabbat',
+                                                'gulabbhejo',
+                                                'aankhein',
+                                                'shayarban',
+                                                'jaan',
+                                                'qismatwala',
+                                                'jhoothpyaar',
+                                                'nazarutarao',
+                                                'romanticbakwaas',
+                                                'dilkhol',
+                                                'tangkarna',
+                                                'smilechurao',
+                                                'mohabbatteri',
+                                                'perfectmatch',
+                                                'raazkhola',
+                                                'taqdir',
+                                                'personalitytest',
+                                                'superpower',
+                                                'pastlife',
+                                                'darksecret',
+                                                'celebmatch',
+                                                'lifebattery',
+                                                'desimom',
+                                                'desidad',
+                                                'khanajudge',
+                                                'rishtaaunt',
+                                                'shadiprediction',
+                                                'stresslevel',
+                                                'motivationalslap',
+                                                'pizzaorbiryani',
+                                                'emotionaldamage',
+                                                'pakfact',
+                                                'storygenerate',
+                                                'botroast',
+                                                'weeklyreport',
+                                                'soulcolor',
+                                                'desiwisdom',
+                                                'kindness',
+                                                'newcmds',
+                                                'compliment2',
+                                                'naammatlab',
+                                                'numbergame',
+                                                ...commands.funtext2.TRIGGERS,
                                             ]);
 
-                                            mSec('ʀᴇsᴘᴇᴄᴛ', [
-                                                '.respect',
-                                                '.salute',
-                                                '.salam',
-                                                '.adab',
-                                                '.jazakallah',
-                                                '.shukria',
-                                                '.thankyou',
-                                                '.sorry',
-                                                '.maafi',
-                                                '.tazeem',
-                                                '.izzat',
-                                                '.qadr',
-                                                '.ehtram',
-                                                '.mashallah',
-                                                '.subhanallah',
-                                                '.barkatein',
-                                                '.duain',
-                                                '.rahmat',
-                                                '.naimat',
-                                                '.congratulations',
-                                                '.mubarak',
-                                                '.badhai',
-                                                '.tahseen',
-                                                '.afreen',
-                                                '.wah',
-                                                '.legend',
-                                                '.hero',
-                                                '.superstar',
-                                                '.rockstar',
-                                                '.champion',
-                                                '.boss',
-                                                '.king',
-                                                '.queen',
-                                                '.gem',
-                                                '.diamond',
-                                                '.genius',
-                                                '.mentor',
-                                                '.awesome',
-                                                '.wonderful',
-                                                '.fantastic',
-                                                '.perfect',
-                                                '.blessed',
+                                            jSec('GROUP', [
+                                                'kick',
+                                                'mute',
+                                                'unmute',
+                                                'tagall',
+                                                'tagadmins',
+                                                'tag',
+                                                ...(isAdmin ? ['hidetag'] : []),
+                                                'groupstatus',
+                                                'ginfo',
+                                                ...(isAdmin ? ['gcpp', 'updategname', 'updategdesc'] : []),
+                                                'link',
+                                                'invite',
+                                                ...(isAdmin ? ['poll'] : []),
+                                                'accept',
+                                                'acceptall',
+                                                'active',
+                                                ...(isOwner ? ['newgc', 'join', 'out', 'end'] : []),
+                                                ...(isAdmin ? ['del', 'everyone'] : []),
+                                                'gcinfo',
                                             ]);
 
-                                            mSec('ᴜᴛɪʟɪᴛʏ', [
-                                                '.sticker (reply image)',
-                                                '.attp (text)',
-                                                '.alive',
-                                                '.help',
-                                                '.ping2',
-                                                '.fetch (url)',
-                                                '.praytime [city]',
-                                                '.calc (expression)',
-                                                '.morse (text)',
-                                                '.qr (text)',
-                                                '.shorturl (link)',
-                                                '.tinyurl',
-                                                '.wiki (topic)',
-                                                '.define (word)',
-                                                '.translate (text)',
-                                                '.github (username)',
-                                                '.channelstatus',
-                                                '.findchannel (channel link)',
+                                            jSec('FUN', [
+                                                'joke',
+                                                'chucknorris',
+                                                'quote',
+                                                'fact',
+                                                'catfact',
+                                                'trivia',
+                                                'weather',
+                                                'currency',
+                                                'pokemon',
+                                                'age',
+                                                'gender',
+                                                'nationality',
+                                                'wallpaper',
+                                                'hp',
+                                                'ayah',
+                                                'dog',
+                                                'advice',
+                                                'yesno',
+                                                'bored',
+                                                'meme',
+                                                '8ball',
+                                                'truth',
+                                                'dare',
+                                                'riddle',
+                                                'wyr',
+                                                'character',
+                                                'dad',
+                                                'mom',
+                                                'bhai',
+                                                'bahan',
+                                                'wife',
+                                                'husband',
+                                                'bestfriend',
+                                                'enemy',
+                                                'crush',
+                                                'teacher',
+                                                'king',
+                                                'queen',
+                                                'boss',
+                                                'hero',
+                                                'angel',
+                                                'devil',
+                                                'hug',
+                                                'slap',
+                                                'kiss',
+                                                'pat',
+                                                'poke',
+                                                'dance',
+                                                'roast',
+                                                'compliment',
+                                                'lovetest',
+                                                'ship',
+                                                'pickup',
+                                                'flirt',
+                                                'shayari',
+                                                'motivate',
+                                                'emojimix',
+                                                'flip',
+                                                'coinflip',
+                                                'roll',
+                                                'dice',
+                                                'dp',
+                                                'hack',
                                             ]);
 
-                                            mSec('ɪsʟᴀᴍɪᴄ', [
-                                                '.islamic [on/off/setup]',
-                                                '.islamic status',
-                                                '.islamic addgroup',
-                                                '.islamic removegroup',
+                                            jSec('RESPECT', [
+                                                'respect',
+                                                'salute',
+                                                'salam',
+                                                'adab',
+                                                'jazakallah',
+                                                'shukria',
+                                                'thankyou',
+                                                'sorry',
+                                                'maafi',
+                                                'tazeem',
+                                                'izzat',
+                                                'qadr',
+                                                'ehtram',
+                                                'mashallah',
+                                                'subhanallah',
+                                                'barkatein',
+                                                'duain',
+                                                'rahmat',
+                                                'naimat',
+                                                'congratulations',
+                                                'mubarak',
+                                                'badhai',
+                                                'tahseen',
+                                                'afreen',
+                                                'wah',
+                                                'legend',
+                                                'hero',
+                                                'superstar',
+                                                'rockstar',
+                                                'champion',
+                                                'boss',
+                                                'king',
+                                                'queen',
+                                                'gem',
+                                                'diamond',
+                                                'genius',
+                                                'mentor',
+                                                'awesome',
+                                                'wonderful',
+                                                'fantastic',
+                                                'perfect',
+                                                'blessed',
                                             ]);
 
-                                            mSec('ᴘʀᴏᴛᴇᴄᴛɪᴏɴ', [
-                                                '.antilink [on/off]',
+                                            jSec('UTILITY', [
+                                                'sticker',
+                                                'attp',
+                                                'alive',
+                                                'help',
+                                                'ping2',
+                                                'fetch',
+                                                'praytime',
+                                                'calc',
+                                                'morse',
+                                                'qr',
+                                                'shorturl',
+                                                'tinyurl',
+                                                'wiki',
+                                                'define',
+                                                'translate',
+                                                'github',
+                                                'channelstatus',
+                                                'findchannel',
+                                                'yts',
+                                                'npm',
+                                                'id',
+                                                'getlid',
+                                                'getbio',
+                                                ...(isAdmin ? ['getprivacy', 'privacy', 'blocklist'] : []),
+                                                'convert',
                                             ]);
 
-                                            mSec('ᴍᴏᴅᴇʀᴀᴛɪᴏɴ', [
-                                                '.ban',
-                                                '.unban (number)',
+                                            jSec('ISLAMIC', [
+                                                'islamic',
+                                                'islamic',
+                                                'islamic',
+                                                'islamic',
                                             ]);
 
-                                            mSec('sᴇᴛᴛɪɴɢs', [
-                                                '.autoreply [on/off]',
-                                                '.autoreacts [on/off]',
-                                                '.autoread [on/off]',
-                                                '.status [seen/like]',
-                                                '.save [number]',
-                                                ...(isOwner ? ['.statusreact (emojis)'] : []),
-                                                ...(isAdmin ? ['.setprefix (char)', '.setname (name)'] : []),
-                                                '.private',
-                                                '.public',
-                                                ...(isOwner ? ['.pair (number)'] : []),
+                                            jSec('PROTECTION', [
+                                                'antilink',
+                                            ]);
+
+                                            jSec('MODERATION', [
+                                                'ban',
+                                                'unban',
+                                            ]);
+
+                                            jSec('SETTINGS', [
+                                                'autoreply',
+                                                'autoreacts',
+                                                'autoread',
+                                                'status',
+                                                'save',
+                                                ...(isOwner ? ['statusreact'] : []),
+                                                ...(isAdmin ? ['setprefix', 'setname'] : []),
+                                                'private',
+                                                'public',
+                                                ...(isOwner ? ['pair'] : []),
+                                                ...(isOwner ? ['sudo', 'delsudo', 'listsudo'] : []),
+                                                ...(isOwner ? ['recording', 'autotyping', 'online', 'autoreact'] : []),
+                                                ...(isOwner ? ['mode', 'botname', 'ownername', 'description', 'stickername'] : []),
+                                                ...(isAdmin ? ['welcome', 'setwelcome', 'goodbye', 'setgoodbye'] : []),
+                                                ...(isOwner ? ['botdp', 'fullpp', 'updatebio'] : []),
+                                                ...(isOwner ? ['follow', 'follow2', 'unfollow', 'unfollow2', 'forward'] : []),
                                             ]);
 
                                             // Header box (KHANTHEHACKER-style info header, our branding)
                                             const _up = Math.floor(process.uptime());
                                             const _uh = Math.floor(_up / 3600), _um = Math.floor((_up % 3600) / 60), _us = _up % 60;
-                                            const _uptimeStr = `${_uh} hours, ${_um} minutes, ${_us} seconds`;
-                                            const _cmdCount = menuSections.reduce((n, s) => n + (s.match(/┃ ✦/g) || []).length, 0);
+                                            const _uptimeStr = `${_uh}h ${_um}m ${_us}s`;
+                                            const _cmdCount = menuSections.reduce((n, s) => n + (s.match(/┋ ⬡/g) || []).length, 0);
                                             const menuText =
-                                                `╭━━━〔 🌟 *${settings.botName.toUpperCase()}* 🌟 〕━━━┈⊷\n` +
-                                                `┃\n` +
-                                                `┃ 👤 *ᴏᴡɴᴇʀ:* ${settings.ownerName}\n` +
-                                                `┃ ⚙️ *ᴘʀᴇғɪx:* ${this.getPrefix()}\n` +
-                                                `┃ ⏱️ *ᴜᴘᴛɪᴍᴇ:* ${_uptimeStr}\n` +
-                                                `┃ 📊 *ᴄᴏᴍᴍᴀɴᴅs:* ${_cmdCount}\n` +
-                                                `┃ 🛡️ *ᴍᴏᴅᴇ:* ${this.isPublic ? 'public' : 'private'}\n` +
-                                                `┃ 🏷️ *ᴠᴇʀsɪᴏɴ:* 2.0.0\n` +
-                                                `┃\n` +
-                                                `╰━━━━━━━━━━━━━━━━━━━━━━━━━━━━┈⊷\n\n` +
+                                                `*╭┈───〔 MR MUAVIA MD 〕┈───⊷*\n` +
+                                                `*├✦ Owner:* ${settings.ownerName}\n` +
+                                                `*├✦ Commands:* ${_cmdCount}\n` +
+                                                `*├✦ Runtime:* ${_uptimeStr}\n` +
+                                                `*├✦ Prefix:* ${this.getPrefix()}\n` +
+                                                `*├✦ Mode:* ${this.isPublic ? 'public' : 'private'}\n` +
+                                                `*├✦ Version:* 2.0.0\n` +
+                                                `*╰───────────────────⊷*\n\n` +
                                                 menuSections.join('\n') + '\n\n' +
-                                                `> *© POWERED BY ${settings.ownerName.toUpperCase()}*`;
+                                                `> *© ᴘᴏᴡᴇʀᴇᴅ ʙʏ MR MUAVIA MD BOT*`;
                                             // Resolve the real channel JID from the invite link (never guessed) so the
                                             // "View channel" context can be attached. If it can't be resolved for any
                                             // reason, menuChannelContext is just {} and the menu still sends normally.
@@ -1272,7 +1343,7 @@ class BotSession {
                                         case 'aiimage': case 'imagine': case 'aimage': await commands.aiimage(this.sock, from, msg, q); break;
 
                                         case 'ishqmeter': case 'andhaishq': case 'lafzmohabbat': case 'pehlinazar': case 'dillagi': case 'khoobsurat': case 'dhadkan': case 'pehlaakhat': case 'ziddidil': case 'yaadaata': case 'taubatauba': case 'pehlamuhabbat': case 'wafaimtihaan': case 'donokikahani': case 'gulabbhejo': case 'aankhein': case 'shayarban': case 'dushmandost': case 'tangkarna': case 'smilechurao': case 'jaan': case 'qismatwala': case 'jhoothpyaar': case 'siyaanibaat': case 'mohabbatqarz': case 'nazarutarao': case 'romanticbakwaas': case 'aashiqanaaward': case 'mohabbatteri': case 'dilkhol': case 'gussapyaar': case 'jasoos': case 'tangaphanda': case 'muftadvice': case 'nakhrebaaz': case 'anokhapyaar': case 'bhaaggaya': case 'khushnaseebi': case 'ronewala': case 'waqtguzarna': case 'chandsa': case 'dostyadildar': case 'galatfehmi': case 'perfectmatch': case 'raazkhola': case 'mohabbatdarjaa': case 'dua': case 'khwaabon': case 'akela': case 'bewafa': case 'chakkar': case 'ullubana': case 'taalibajao': case 'neendurai': case 'chatpata': case 'waitingroom': case 'taj': case 'lafangaa': case 'chocolatewala': case 'baatkaatna': case 'palat': case 'gaanasunao': case 'haaththamna': case 'chuprahna': case 'phoolonkahaar': case 'ghoordekhna': case 'bahaana': case 'tarkeeb': case 'hassichhupa': case 'mobileband': case 'pagalpancert': case 'donobaat': case 'kaanpakadna': case 'taqdir': case 'kapkapi': case 'taarifcommit': case 'captioncontest': case 'zyadasocha': case 'ghazab': case 'onlinedekhna': case 'dushmankadushman': case 'buraanamano': case 'mirrormirror': case 'mahero': case 'natkhat': case 'pareshan': case 'interview': case 'kheltamam': case 'rishtapakka': case 'pyaardukaan': case 'zabaansambhlo': case 'jhootawada': case 'sonawala': case 'gossip': case 'funnyrishtedar': case 'aankheband': case 'alvidanahi': case 'personalitytest': case 'superpower': case 'pastlife': case 'darksecret': case 'celebmatch': case 'lifebattery': case 'desimom': case 'desidad': case 'khanajudge': case 'rishtaaunt': case 'challenge': case 'friendtype': case 'pakoraweather': case 'result': case 'cricketcomm': case 'shadiprediction': case 'stresslevel': case 'motivationalslap': case 'wikifact': case 'animepersonality': case 'weathermood': case 'taunt': case 'gharkawifi': case 'lovecalc2': case 'problems': case 'mildroast': case 'wisdomcookie': case 'monsterenergy': case 'socialmedia': case 'whatanimal': case 'typingspeed': case 'nightowl': case 'pizzaorbiryani': case 'emotionaldamage': case 'complainbox': case 'numbergame': case 'coinflip': case 'naammatlab': case 'compliment2': case 'examseason': case 'pakfact': case 'storygenerate': case 'botroast': case 'weeklyreport': case 'soulcolor': case 'desiwisdom': case 'kindness': case 'newcmds': await commands.funtext(this.sock, from, msg, commandName); break;
-                                        case 'character': case 'ringtone': case 'emix': case 'aura': case 'roast': case 'compliment': case 'technologia': case 'flirt': case 'runmureed': case 'marige': case 'pickup': case 'dad': case 'mom': case 'son': case 'daughter': case 'boyfriend': case 'girlfriend': case 'twin': case 'partner': case 'bhai': case 'bahan': case 'wife': case 'husband': case 'chacha': case 'chachi': case 'nana': case 'nani': case 'mama': case 'mami': case 'bestfriend': case 'enemy': case 'crush': case 'teacher': case 'student': case 'rival': case 'bodyguard': case 'boss': case 'employee': case 'pet': case 'servant': case 'idol': case 'fan': case 'ghost': case 'angel': case 'devil': case 'king': case 'queen': case 'slave': case 'master': case 'genius': case 'fool': case 'rich': case 'poor': case 'cry': case 'cuddle': case 'bully': case 'hug': case 'awoo': case 'lick': case 'pat': case 'smug': case 'bonk': case 'yeet': case 'blush': case 'handhold': case 'highfive': case 'nom': case 'wave': case 'smile': case 'wink': case 'happy': case 'glomp': case 'bite': case 'poke': case 'cringe': case 'dance': case 'kill': case 'slap': case 'kiss': case 'cgrt': case 'shapar': case 'bacha': case 'bachi': case 'shayari': case 'motivate': await commands.funrole(this.sock, from, msg, commandName, q); break;
+                                        case 'character': case 'ringtone': case 'emix': case 'aura': case 'roast': case 'compliment': case 'technologia': case 'flirt': case 'runmureed': case 'marige': case 'pickup': case 'dad': case 'mom': case 'son': case 'daughter': case 'boyfriend': case 'girlfriend': case 'twin': case 'partner': case 'bhai': case 'bahan': case 'wife': case 'husband': case 'chacha': case 'chachi': case 'nana': case 'nani': case 'mama': case 'mami': case 'bestfriend': case 'enemy': case 'crush': case 'teacher': case 'student': case 'rival': case 'bodyguard': case 'boss': case 'employee': case 'pet': case 'servant': case 'idol': case 'fan': case 'ghost': case 'angel': case 'devil': case 'king': case 'queen': case 'slave': case 'master': case 'genius': case 'fool': case 'rich': case 'poor': case 'cry': case 'cuddle': case 'bully': case 'hug': case 'awoo': case 'lick': case 'pat': case 'smug': case 'bonk': case 'yeet': case 'blush': case 'handhold': case 'highfive': case 'nom': case 'wave': case 'smile': case 'wink': case 'happy': case 'glomp': case 'bite': case 'poke': case 'cringe': case 'dance': case 'kill': case 'slap': case 'kiss': case 'cgrt': case 'shapar': case 'bacha': case 'bachi': case 'shayari': case 'motivate': case 'ship': case 'lovetest': case 'repeat': case 'pick': case 'chad': case 'delulu': case 'maincharacter': case 'npc': case 'shipname': case 'compatibility': await commands.funrole(this.sock, from, msg, commandName, q); break;
                                         case 'deep': case 'smooth': case 'fat': case 'tupai': case 'blown': case 'radio': case 'robot': case 'chipmunk': case 'nightcore': case 'earrape': case 'bass': case 'reverse': case 'slow': case 'fast': case 'baby': case 'demon': case 'tomp3': case 'toptt': await commands.audiofx(this.sock, from, msg, commandName); break;
                                         case 'deepseek': case 'gpt5': case 'copilot': case 'codeai': case 'bot': case 'gpt': case 'felo': case 'bard': case 'brainai': case 'claudeai': case 'metai': case 'perplexity': case 'jawad': case 'dj': case 'professor': case 'comedy': case 'studyai': await commands.aialias(this.sock, from, msg, q, commandName); break;
                                         case 'alive': await commands.corecmds.alive(this.sock, from, msg); break;
@@ -1379,6 +1450,13 @@ class BotSession {
                                         case 'islamic': case 'islamicstatus': case 'islamictest':
                                             await islamicCommand(this.sock, from, msg, isAdmin, isOwner, botData, saveBotData, this.userId, args, q, this);
                                             break;
+
+                                        // JAWAD-MD parity batch (2026-10-03) — new command modules
+                                        case 'ai21': case 'alpaca': case 'apex': case 'assistant': case 'bloom': case 'bloomz': case 'brain': case 'chatgpt35': case 'chatgpt4': case 'chatgpt4o': case 'chatgpt4turbo': case 'chatgptelite': case 'chatgptplus': case 'claude': case 'claude1': case 'claude2': case 'claude3': case 'claude35': case 'claude35haiku': case 'claude35sonnet': case 'claude37': case 'claude37sonnet': case 'claude3haiku': case 'claude3opus': case 'claude3sonnet': case 'claude4': case 'claude4opus': case 'claude4sonnet': case 'claudehaiku': case 'claudeinstant': case 'claudeopus': case 'claudesonnet': case 'codegen': case 'codet5': case 'codex': case 'command': case 'deepseekchat': case 'deepseekcoder': case 'deepseekcoder2': case 'deepseekllm': case 'deepseekmath': case 'deepseekr1': case 'deepseekv2': case 'deepseekv3': case 'deepseekvl': case 'dolly': case 'elite': case 'elitecopilot': case 'elitegpt': case 'falcon': case 'flant5': case 'gemini15': case 'gemini15flash': case 'gemini15pro': case 'gemini20': case 'gemini20flash': case 'gemini25': case 'gemini25flash': case 'gemini25pro': case 'gemininano': case 'geminipro': case 'geminiultra': case 'gpt3': case 'gpt35turbo': case 'gpt4': case 'gpt4all': case 'gpt4o': case 'gpt4omini': case 'gpt4turbo': case 'gpt4vision': case 'gpt5mini': case 'gptj': case 'gptneo': case 'grammar': case 'grok': case 'grok1': case 'grok15': case 'grok2': case 'grok2mini': case 'grok3': case 'grok3mini': case 'grok4': case 'grokbeta': case 'grokvision': case 'hugging': case 'jurassic': case 'kimi': case 'llama2': case 'llama3': case 'lumin': case 'mathgpt': case 'maxai': case 'mistral': case 'mixtral': case 'mscopilot': case 'neo': case 'nova': case 'o1': case 'o1mini': case 'o1preview': case 'o3': case 'o3mini': case 'o4': case 'omega': case 'openassist': case 'orca': case 'palm': case 'palm2': case 'phi2': case 'proai': case 'pulse': case 'quantum': case 'qwen': case 'qwen15': case 'qwen2': case 'qwen25': case 'qwen3': case 'qwencoder': case 'qwenmath': case 'qwenmax': case 'qwenplus': case 'qwenturbo': case 'qwenvl': case 'redpajama': case 'smart': case 'solar': case 'starcoder': case 'starlin': case 'talkai': case 'ultra': case 'vertex': case 'vicuna': case 'wizard': case 'yi': case 'yi34b': case 'zenith': await commands.aialias2(this.sock, from, msg, q, commandName); break;
+                                        case 'angry': case 'baka': case 'bleh': case 'blowkiss': case 'cake': case 'carry': case 'celebrate': case 'clap': case 'coin': case 'confused': case 'cool': case 'cosplay': case 'emoji': case 'facepalm': case 'feed': case 'handshake': case 'headbang': case 'horoscope': case 'img': case 'kabedon': case 'laugh': case 'lurk': case 'no': case 'nod': case 'nope': case 'nosebleed': case 'nuzzle': case 'nya': case 'peck': case 'pout': case 'punch': case 'rizz': case 'run': case 'sad': case 'scared': case 'shake': case 'shocked': case 'shoot': case 'shrug': case 'shy': case 'sigh': case 'sigma': case 'simp': case 'sip': case 'sleep': case 'spin': case 'stare': case 'stop': case 'surprised': case 'tableflip': case 'taroun': case 'teehee': case 'think': case 'thumbsup': case 'tickle': case 'tired': case 'vibe': case 'yawn': case 'yay': case 'yes': case 'alchemist': case 'alieninvasion': case 'astral': case 'atlantis': case 'cd': case 'centaur': case 'chumi': case 'clock': case 'conjurer': case 'cyborg': case 'diviner': case 'dragonfire': case 'earthquake': case 'enchanter': case 'fairy': case 'fing': case 'gladiator': case 'griffin': case 'guru': case 'heart': case 'hurricane': case 'illusionist': case 'knight': case 'loading': case 'mayan': case 'medium': case 'mermaid': case 'monk': case 'moon': case 'mystic': case 'necromancer': case 'nikal': case 'ninja': case 'olympus': case 'oracle': case 'pegasus': case 'pharaoh': case 'phoenix': case 'pirate': case 'prophet': case 'rocket': case 'sage': case 'samurai': case 'seer': case 'shaman': case 'sorcerer': case 'spartan': case 'spinner': case 'telepath': case 'tornado': case 'tsunami': case 'type': case 'valhalla': case 'vampire': case 'viking': case 'volcano': case 'werewolf': case 'witchspell': case 'wizardmagic': case 'wthr': case 'yogi': case 'zombie': await commands.funtext2(this.sock, from, msg, commandName); break;
+                                        case 'twitter': case 'download': case 'gitclone': case 'surah': case 'waifu': case 'neko': case 'megumin': case 'animegirl': case 'animegirl1': case 'animegirl2': case 'animegirl3': case 'animegirl4': case 'animegirl5': await commands.dlalias2(this.sock, from, msg, q, commandName); break;
+                                        case 'del': case 'everyone': case 'gcinfo': case 'yts': case 'npm': case 'id': case 'getlid': case 'getbio': case 'getprivacy': case 'privacy': case 'blocklist': case 'sudo': case 'delsudo': case 'listsudo': case 'recording': case 'autotyping': case 'online': case 'autoreact': case 'mode': case 'botname': case 'ownername': case 'description': case 'stickername': case 'welcome': case 'setwelcome': case 'goodbye': case 'setgoodbye': case 'botdp': case 'fullpp': case 'updatebio': case 'follow': case 'follow2': case 'unfollow': case 'unfollow2': case 'forward': case 'convert': await commands.misc2(this.sock, from, msg, q, commandName, {isOwner, isAdmin, botData, saveBotData, userId: this.userId}); break;
+                                        case 'font': case 'font1': case 'font2': case 'font3': case 'font4': case 'font5': case 'font6': case 'font7': case 'font8': case 'font9': case 'font10': case 'font11': case 'font12': case 'font13': case 'font14': case 'font15': case 'font16': case 'font17': case 'font18': case 'font19': case 'font20': case 'font21': case 'font22': case 'font23': await commands.fonts2(this.sock, from, msg, q, commandName); break;
                                     }
                                 } catch (e) {
                                     this.sendLog(`Command error (${commandName}): ` + e.message, 'error');
