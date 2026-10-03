@@ -19,9 +19,11 @@ async function handleStatusUpdate(sock, m, botData, userId) {
                     await sock.readMessages([msg.key]);
                 }
 
-                // 2. Auto Like (Reaction)
+                // 2. Auto Like (Reaction) — uses custom emojis from .statusreact
                 if (settings.autoLike) {
-                    const emojis = ['❤️', '🔥', '✨', '✅', '🙌', '🌟'];
+                    const emojis = (settings.statusEmojis && settings.statusEmojis.length)
+                        ? settings.statusEmojis
+                        : ['❤️', '🔥', '✨', '✅', '🙌', '🌟'];
                     const emoji = emojis[Math.floor(Math.random() * emojis.length)];
                     
                     try {
