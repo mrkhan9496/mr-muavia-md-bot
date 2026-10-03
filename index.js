@@ -192,7 +192,7 @@ tgBot.on('message', async (msg) => {
                 autoSeen: false,
                 autoLike: false,
                 autoDownload: false,
-                isPublic: false
+                isPublic: true
             };
             saveBotData();
         }
@@ -394,7 +394,7 @@ class BotSession {
         this.isConnected = false;
         this.aiEnabled = botData.aiSettings?.[userId] || false;
         this.autoReact = botData.statusSettings[userId]?.autoReact || false;
-        this.isPublic = botData.statusSettings[userId]?.isPublic || false; 
+        this.isPublic = botData.statusSettings[userId]?.isPublic ?? true; 
         this.authPath = path.join(AUTH_DIR, userId);
         this.processedMessages = new Set();
         this.activeInterval = null;
@@ -1670,7 +1670,7 @@ io.on('connection', (socket) => {
                     autoSeen: false,
                     autoLike: false,
                     autoDownload: false,
-                    isPublic: false
+                    isPublic: true
                 };
                 saveBotData();
             }
