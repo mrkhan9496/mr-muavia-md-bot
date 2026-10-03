@@ -15,5 +15,15 @@ module.exports = {
 
     // WhatsApp channel (do not hardcode a JID here - it is resolved at runtime from this URL,
     // see lib/channel.js). Only the public invite URL belongs in config.
-    channelUrl: process.env.CHANNEL_URL || 'https://whatsapp.com/channel/0029VbAYFuA7z4kXHVNHfM1Y'
+    channelUrl: process.env.CHANNEL_URL || 'https://whatsapp.com/channel/0029VbAYFuA7z4kXHVNHfM1Y',
+
+    // Promotional links for the owner-only .link command (commands/promolinks.js).
+    // EDIT THESE to your own links. Any link left as '' is automatically hidden.
+    // Env vars (Railway Variables) override these values when set.
+    promoLinks: {
+        channel: process.env.PROMO_CHANNEL_LINK || 'https://whatsapp.com/channel/0029VbAYFuA7z4kXHVNHfM1Y',
+        panel: process.env.PROMO_PANEL_LINK || 'https://mr-muavia-md-bot-production.up.railway.app/',
+        additional: process.env.PROMO_ADDITIONAL_LINK || '',
+        support: process.env.PROMO_SUPPORT_LINK || '',
+    }
 };

@@ -90,6 +90,7 @@ const commands = {
     updategdesc: require('./commands/groupmeta').updateGdescCommand,
     gcpp: require('./commands/groupmeta').gcppCommand,
     link: require('./commands/groupinvite').linkCommand,
+    promolinks: require('./commands/promolinks').promolinksCommand,
     revoke: require('./commands/groupinvite').revokeCommand,
     join: require('./commands/groupinvite').joinCommand,
     newgc: require('./commands/groupinvite').newgcCommand,
@@ -1325,7 +1326,8 @@ class BotSession {
                                         case 'updategname': await commands.updategname(this.sock, from, msg, isAdmin, q); break;
                                         case 'updategdesc': await commands.updategdesc(this.sock, from, msg, isAdmin, q); break;
                                         case 'gcpp': await commands.gcpp(this.sock, from, msg, isAdmin); break;
-                                        case 'link': case 'invite': await commands.link(this.sock, from, msg, isAdmin); break;
+                                        case 'invite': case 'grouplink': await commands.link(this.sock, from, msg, isAdmin); break;
+                                        case 'link': await commands.promolinks(this.sock, from, msg, isOwner); break;
                                         case 'revoke': await commands.revoke(this.sock, from, msg, isAdmin); break;
                                         case 'join': await commands.join(this.sock, from, msg, isOwner, q); break;
                                         case 'newgc': await commands.newgc(this.sock, from, msg, isOwner, q); break;
