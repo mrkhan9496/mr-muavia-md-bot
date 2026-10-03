@@ -212,15 +212,6 @@
   </div>
   <div class="sec-label" style="margin-top:-8px"><span id="dateTxt">—</span> · <span id="timeTxt">—</span></div>
 
-  <!-- OWNER -->
-  <div class="card">
-    <h3><span class="ico">👤</span> Owner Information</h3>
-    <p class="sub">Bot owner and identity details.</p>
-    <div class="kv"><span class="k">👤 Owner</span><span class="v" id="ownerName">—</span></div>
-    <div class="kv"><span class="k">📱 WhatsApp</span><span class="v green" id="ownerNumber">—</span></div>
-    <div class="kv"><span class="k">🤖 Bot</span><span class="v" id="botName">—</span></div>
-  </div>
-
   <!-- QUICK SETUP -->
   <div class="card" id="setupCard">
     <h3><span class="ico">⚡</span> Quick Setup</h3>
@@ -335,7 +326,6 @@
   var $ = function(id){ return document.getElementById(id); };
   var serverPill=$('serverPill'), serverPillTxt=$('serverPillTxt'),
       dateTxt=$('dateTxt'), timeTxt=$('timeTxt'),
-      ownerName=$('ownerName'), ownerNumber=$('ownerNumber'), botName=$('botName'),
       waNumber=$('waNumber'), numErr=$('numErr'), pairBtn=$('pairBtn'),
       statusCard=$('statusCard'), statusLine=$('statusLine'),
       codeWrap=$('codeWrap'), pairCode=$('pairCode'), copyBtn=$('copyBtn'),
@@ -374,9 +364,6 @@
 
   /* ---------- public config (no secrets) ---------- */
   fetch('/api/config').then(function(r){return r.json();}).then(function(c){
-    ownerName.textContent=c.ownerName||'MR MUAVIA';
-    ownerNumber.textContent=c.ownerDisplayNumber||'—';
-    botName.textContent=c.botName||'MR MUAVIA MD BOT';
     dashBotName.textContent=c.botName||'MR MUAVIA MD BOT';
     if(c.channelUrl){channelLink.href=c.channelUrl;}
     if(c.version){verTxt.textContent=c.version;}
