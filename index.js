@@ -509,10 +509,14 @@ class BotSession {
         // Remember pairing number for reconnection (so code stays valid)
         if (pairingNumber) this.pendingPairingNumber = pairingNumber;
         const effectivePairingNumberEarly = pairingNumber || this.pendingPairingNumber;
-        // If a pairing code was issued <50s ago on the current live socket,
+        // If a pairing code was issued <50s ago on the current LIVE socket,
         // don't tear it down — just re-deliver the code to the browser.
         // (Prevents duplicate sockets + orphaned codes on double-clicks.)
-        if (this.sock && effectivePairingNumberEarly && this._lastCodeAt
+        // CRITICAL: the socket must actually be alive (WS open). A dead
+        // socket object would otherwise be "reused" forever and pairing
+        // could never complete ("Couldn't link device").
+        const sockAlive = this.sock && this.sock.ws && this.sock.ws.readyState === 1;
+        if (sockAlive && effectivePairingNumberEarly && this._lastCodeAt
             && Date.now() - this._lastCodeAt < 50000
             && this._lastCodeNumber === effectivePairingNumberEarly) {
             this.sendLog('Pairing already in progress — reusing current session.', 'info');
@@ -606,6 +610,20 @@ class BotSession {
             const effectivePairingNumber = pairingNumber || this.pendingPairingNumber;
             if (effectivePairingNumber && !state.creds.registered) {
                 if (!this.sock.authState.creds.registered) {
+                    // Decide: fresh code or reuse? Explicit user action
+                    // (pairingNumber given) always gets a fresh code.
+                    // On silent reconnect, reuse the in-flight code if it's
+                    // still fresh (<90s) so the user can keep typing it —
+                    // requesting a new code mid-entry orphans what they saw.
+                    const explicitRequest = !!pairingNumber;
+                    const codeAge = this._lastCodeAt ? Date.now() - this._lastCodeAt : Infinity;
+                    const reuseCode = !explicitRequest && this._lastCode
+                        && this._lastCodeNumber === effectivePairingNumber && codeAge < 90000;
+                    if (reuseCode) {
+                        this.sendLog('🔄 Reconnected — keeping existing pairing code valid.', 'info');
+                        const socketId = userSockets[this.userId];
+                        if (socketId) io.to(socketId).emit('pairing-code', this._lastCode);
+                    } else {
                     // Wait for WebSocket to be ready before requesting pairing code
                     // (requestPairingCode fails silently if socket isn't connected)
                     const isRePair = !pairingNumber && this.pendingPairingNumber;
@@ -668,6 +686,7 @@ class BotSession {
                             await tgBot.sendMessage(this.tgChatId, "❌ Pairing Error: " + err.message);
                         }
                     }
+                    } // end else (fresh code requested)
                 }
             }
 
