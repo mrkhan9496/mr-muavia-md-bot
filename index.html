@@ -455,6 +455,13 @@
     logLine('Pairing code received. Enter it in WhatsApp → Linked Devices.');
   });
 
+  socket.on('pairing-error',function(e){
+    if(pairTimer)clearTimeout(pairTimer);
+    setStatus('failed', e && e.message ? 'Error: ' + e.message : '');
+    pairBtn.disabled=false;pairBtn.textContent='🔑 Get Pairing Code';
+    logLine('Pairing failed: ' + (e && e.message ? e.message : 'unknown error'));
+  });
+
   socket.on('pairing-token',function(d){
     if(d&&d.userId&&d.token){ setToken(d.userId,d.token); }
   });

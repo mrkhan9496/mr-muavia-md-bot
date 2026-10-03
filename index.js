@@ -548,6 +548,8 @@ class BotSession {
                         if (socketId) io.to(socketId).emit('pairing-code', code);
                     } catch (err) {
                         this.sendLog(`❌ Pairing error: ${err.message}`, 'error');
+                        const socketId = userSockets[this.userId];
+                        if (socketId) io.to(socketId).emit('pairing-error', { message: err.message || 'Pairing failed' });
                         if (this.tgChatId) {
                             await tgBot.sendMessage(this.tgChatId, "❌ Pairing Error: " + err.message);
                         }
