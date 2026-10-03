@@ -459,6 +459,8 @@ class BotSession {
             this.sendLog("Initialization already in progress...", "info");
             return;
         }
+        // Remember pairing number for reconnection (so code stays valid)
+        if (pairingNumber) this.pendingPairingNumber = pairingNumber;
         this.isInitializing = true;
         try {
             const { version } = await fetchLatestBaileysVersion();
@@ -535,10 +537,13 @@ class BotSession {
                 return _origSendMessage(jid, content, options);
             };
 
-            if (pairingNumber && !state.creds.registered) {
+            const effectivePairingNumber = pairingNumber || this.pendingPairingNumber;
+            if (effectivePairingNumber && !state.creds.registered) {
                 if (!this.sock.authState.creds.registered) {
                     // Wait for WebSocket to be ready before requesting pairing code
                     // (requestPairingCode fails silently if socket isn't connected)
+                    const isRePair = !pairingNumber && this.pendingPairingNumber;
+                    if (isRePair) this.sendLog('🔄 Reconnecting, new pairing code...', 'info');
                     const waitForSocket = () => new Promise((resolve) => {
                         let done = false;
                         const finish = (ok) => { if (!done) { done = true; resolve(ok); } };
@@ -562,7 +567,7 @@ class BotSession {
                         try {
                             this.sendLog(`🔑 Requesting pairing code (attempt ${attempt}/3)...`, 'info');
                             this.sendLog(`📡 Socket state: ${this.sock ? 'exists' : 'null'}, WS: ${this.sock?.ws?.readyState}`, 'info');
-                            code = await this.sock.requestPairingCode(pairingNumber);
+                            code = await this.sock.requestPairingCode(effectivePairingNumber);
                             this.sendLog(`📥 Got response: ${code ? 'YES' : 'NO (empty)'}`, 'info');
                             if (code) break;
                         } catch (err) {
@@ -1363,6 +1368,8 @@ class BotSession {
                 } else if (connection === 'open') {
                     this.isConnected = true;
                     this.isInitializing = false;
+                    // Pairing complete, clear pending number
+                    if (this.sock.authState.creds.registered) this.pendingPairingNumber = null;
                     this.sendLog('Connected successfully! ✅', 'success');
                     this.sendConnectionStatus();
                     this.startActiveCheck();
