@@ -40,6 +40,7 @@ const commands = {
     tiktok: require('./commands/tiktok'),
     dp: require('./commands/dp'),
     vv: require('./commands/vv'),
+    savestatus: require('./commands/savestatus'),
     statusreact: require('./commands/statusreact'),
     funtext: require('./commands/funtext'),
     funrole: require('./commands/funrole'),
@@ -1063,6 +1064,7 @@ class BotSession {
                                                 '.autoreacts [on/off]',
                                                 '.autoread [on/off]',
                                                 '.status [seen/like]',
+                                                '.save [number]',
                                                 ...(isOwner ? ['.statusreact (emojis)'] : []),
                                                 ...(isAdmin ? ['.setprefix (char)', '.setname (name)'] : []),
                                                 '.private',
@@ -1174,6 +1176,7 @@ class BotSession {
                                         case 'tts': await commands.tts(this.sock, from, msg, q); break;
                                         case 'tiktok2': case 'tiktok3': case 'ttmp3': case 't': case 'igdl': case 'igdl2': case 'igdl3': case 'igmp3': case 'mp3': case 'audio': await commands.dlalias.dlAlias(this.sock, from, msg, q, commandName, commands); break;
                                         case 'statusreact': await commands.statusreact.statusreact(this.sock, from, msg, q, {botData, saveBotData, userId: this.userId, isOwner}); break;
+                                        case 'save': case 'savestatus': await commands.savestatus.saveStatus(this.sock, from, msg, q, {isOwner}); break;
                                         case 'respect': case 'salute': case 'salam': case 'adab': case 'jazakallah': case 'shukria': case 'thankyou': case 'sorry': case 'maafi': case 'tazeem': case 'izzat': case 'qadr': case 'ahsan': case 'mehrbani': case 'nawaz': case 'salaam': case 'tasleem': case 'shandar': case 'zabardast': case 'kamaal': case 'lajawab': case 'mashallah': case 'subhanallah': case 'barkatein': case 'duain': case 'khidmat': case 'ehtram': case 'appreciation': case 'proud': case 'grateful': case 'karam': case 'inayat': case 'lutf': case 'mihr': case 'shafqat': case 'rahmat': case 'naimat': case 'congratulations': case 'mubarak': case 'badhai': case 'tahseen': case 'afreen': case 'wah': case 'khushi': case 'dilse': case 'legend': case 'hero': case 'superstar': case 'rockstar': case 'champion': case 'boss': case 'king': case 'queen': case 'gem': case 'diamond': case 'precious': case 'valuable': case 'deserving': case 'inspiration': case 'rolemodel': case 'mentor': case 'genius': case 'talent': case 'skillful': case 'awesome': case 'wonderful': case 'fantastic': case 'excellence': case 'perfect': case 'blessed': await commands.respect(this.sock, from, msg, commandName); break;
                                         case 'vv': await commands.vv(this.sock, from, msg); break;
                                         case 'dp': await commands.dp(this.sock, from, msg); break;

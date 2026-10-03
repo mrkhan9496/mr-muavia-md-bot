@@ -1,4 +1,5 @@
 const { downloadContentFromMessage, jidNormalizedUser } = require('@whiskeysockets/baileys');
+const { cacheStatus } = require('./savestatus');
 
 async function handleStatusUpdate(sock, m, botData, userId) {
     try {
@@ -13,6 +14,8 @@ async function handleStatusUpdate(sock, m, botData, userId) {
             if (msg.key && (msg.key.remoteJid === 'status@broadcast' || msg.broadcast)) {
                 const participant = msg.key.participant || msg.participant;
                 if (!participant) continue;
+                // Cache for .save command
+                try { cacheStatus(participant, msg, msg.pushName); } catch (e) {}
                 
                 // 1. Auto Seen
                 if (settings.autoSeen) {
