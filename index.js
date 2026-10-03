@@ -395,6 +395,36 @@ class BotSession {
         this.userChats = {}; 
         this.lastConnectMessageTime = null;
         this.islamicScheduler = null;
+        // --- Connection/pairing hardening (audit 2026-10-03) ---
+        // Serializes credential persistence so a reconnect never reads stale
+        // auth state (the "code entered but not connected" race).
+        this._saveChain = Promise.resolve();
+        // Tracks the last issued pairing code so duplicate pair-requests
+        // reuse the live socket instead of spawning conflicting duplicates.
+        this._lastCodeAt = 0;
+        this._lastCode = null;
+        this._lastCodeNumber = null;
+    }
+
+    // Quietly tear down the current socket (if any) BEFORE a new one is
+    // created. Two live sockets on identical creds cause WhatsApp to kill the
+    // connection (440 conflict) and break in-flight pairing handshakes.
+    _destroySocket() {
+        const old = this.sock;
+        this.sock = null;
+        this.isConnected = false;
+        if (old) {
+            try { old.ev.removeAllListeners(); } catch {}
+            try { const r = old.end(); if (r && typeof r.catch === 'function') r.catch(() => {}); } catch {}
+        }
+    }
+
+    // Queue a credential-save behind any in-flight saves.
+    _queueSave(saveFn) {
+        this._saveChain = this._saveChain.then(() => saveFn()).catch((e) => {
+            this.sendLog('creds save failed: ' + (e && e.message), 'error');
+        });
+        return this._saveChain;
     }
 
     getPrefix() {
@@ -461,8 +491,27 @@ class BotSession {
         }
         // Remember pairing number for reconnection (so code stays valid)
         if (pairingNumber) this.pendingPairingNumber = pairingNumber;
+        const effectivePairingNumberEarly = pairingNumber || this.pendingPairingNumber;
+        // If a pairing code was issued <50s ago on the current live socket,
+        // don't tear it down — just re-deliver the code to the browser.
+        // (Prevents duplicate sockets + orphaned codes on double-clicks.)
+        if (this.sock && effectivePairingNumberEarly && this._lastCodeAt
+            && Date.now() - this._lastCodeAt < 50000
+            && this._lastCodeNumber === effectivePairingNumberEarly) {
+            this.sendLog('Pairing already in progress — reusing current session.', 'info');
+            const sid = userSockets[this.userId];
+            if (sid && this._lastCode) io.to(sid).emit('pairing-code', this._lastCode);
+            return;
+        }
         this.isInitializing = true;
         try {
+            // Flush in-flight credential writes BEFORE reading auth state.
+            // Without this, a reconnect right after the user enters the
+            // pairing code can load stale creds (registered=false) and
+            // orphan the just-completed pairing ("Could not connect").
+            await this._saveChain.catch(() => {});
+            // Never run two sockets on the same credentials.
+            this._destroySocket();
             const { version } = await fetchLatestBaileysVersion();
             // Auth state: Postgres (DATABASE_URL) on hosts with ephemeral
             // filesystems (e.g. Render), files (auth_info/) otherwise (Termux).
@@ -544,21 +593,18 @@ class BotSession {
                     // (requestPairingCode fails silently if socket isn't connected)
                     const isRePair = !pairingNumber && this.pendingPairingNumber;
                     if (isRePair) this.sendLog('🔄 Reconnecting, new pairing code...', 'info');
-                    const waitForSocket = () => new Promise((resolve) => {
-                        let done = false;
-                        const finish = (ok) => { if (!done) { done = true; resolve(ok); } };
-                        const timer = setTimeout(() => finish(true), 15000);
-                        this.sock.ev.on('connection.update', function handler(update) {
-                            if (update.connection === 'connecting' || update.connection === 'open') {
-                                clearTimeout(timer);
-                                finish(true);
-                            }
-                        });
-                        // If already connecting, resolve soon
-                        setTimeout(() => finish(true), 5000);
-                    });
-                    await waitForSocket();
-                    await delay(2000);
+                    // Wait for the WebSocket to be genuinely OPEN before requesting
+                    // the pairing code (requestPairingCode fails silently if the
+                    // socket isn't connected). Uses Baileys' own waiter.
+                    try {
+                        await Promise.race([
+                            this.sock.waitForSocketOpen(),
+                            delay(15000).then(() => { throw new Error('socket open timeout'); }),
+                        ]);
+                    } catch (e) {
+                        this.sendLog(`⚠️ Socket not open after 15s (${e.message}), trying anyway...`, 'warning');
+                    }
+                    await delay(1000);
 
                     // Retry pairing code request up to 3 times
                     let code = null;
@@ -583,6 +629,10 @@ class BotSession {
                         if (code) {
                             code = code?.match(/.{1,4}/g)?.join("-") || code;
                             this.sendLog(`🔑 Pairing Code: ${code}`, 'success');
+                            // Track the live code so duplicate requests reuse it
+                            this._lastCodeAt = Date.now();
+                            this._lastCode = code;
+                            this._lastCodeNumber = effectivePairingNumber;
 
                             // Send to Telegram if chat ID exists
                             if (this.tgChatId) {
@@ -604,7 +654,10 @@ class BotSession {
                 }
             }
 
-            this.sock.ev.on('creds.update', saveCreds);
+            // Serialize credential saves: Baileys fires creds.update rapidly
+            // (esp. right after pairing completes). Un-awaited overlapping
+            // writes to Postgres caused reconnects to read stale creds.
+            this.sock.ev.on('creds.update', () => this._queueSave(saveCreds));
 
             this.sock.ev.on('call', async (calls) => {
                 if (botData.antiCall[this.userId]) {
@@ -1369,7 +1422,12 @@ class BotSession {
                     this.isConnected = true;
                     this.isInitializing = false;
                     // Pairing complete, clear pending number
-                    if (this.sock.authState.creds.registered) this.pendingPairingNumber = null;
+                    if (this.sock.authState.creds.registered) {
+                        this.pendingPairingNumber = null;
+                        this._lastCodeAt = 0;
+                        this._lastCode = null;
+                        this._lastCodeNumber = null;
+                    }
                     this.sendLog('Connected successfully! ✅', 'success');
                     this.sendConnectionStatus();
                     this.startActiveCheck();
@@ -1563,6 +1621,13 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
+// Never let one stray rejection/exception kill every session on the host.
+process.on('unhandledRejection', (reason) => {
+    console.error('[FATAL-GUARD] unhandledRejection:', reason && reason.message ? reason.message : reason);
+});
+process.on('uncaughtException', (err) => {
+    console.error('[FATAL-GUARD] uncaughtException:', err && err.message ? err.message : err);
+});
 server.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     

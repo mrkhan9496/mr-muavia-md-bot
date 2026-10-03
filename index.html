@@ -412,13 +412,13 @@
 
     if(pairTimer)clearTimeout(pairTimer);
     pairTimer=setTimeout(function(){
-      /* no code and no connection after 60s -> real failure state */
+      /* no code and no connection after 90s -> real failure state */
       if(codeWrap.classList.contains('hidden')&&dashWrap.classList.contains('hidden')){
-        setStatus('failed');
+        setStatus('failed','No pairing code arrived. Check the number and tap "Get Pairing Code" again for a fresh code.');
         pairBtn.disabled=false;pairBtn.textContent='🔑 Get Pairing Code';
-        logLine('Pairing timed out. Check the number and try again.');
+        logLine('Pairing timed out after 90s. Check the number and try again.');
       }
-    },60000);
+    },90000);
   };
 
   pairCode.onclick=function(){
