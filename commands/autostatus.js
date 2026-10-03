@@ -3,10 +3,6 @@ const { cacheStatus } = require('./savestatus');
 
 async function handleStatusUpdate(sock, m, botData, userId) {
     try {
-        // Ensure settings exist and autoStatus is enabled
-        const settings = botData.statusSettings[userId];
-        if (!settings || !settings.autoStatus) return;
-
         const ownerJid = jidNormalizedUser(sock.user.id);
 
         for (const msg of m.messages) {
@@ -14,8 +10,12 @@ async function handleStatusUpdate(sock, m, botData, userId) {
             if (msg.key && (msg.key.remoteJid === 'status@broadcast' || msg.broadcast)) {
                 const participant = msg.key.participant || msg.participant;
                 if (!participant) continue;
-                // Cache for .save command
+                // ALWAYS cache for .save command (even if autoStatus is off)
                 try { cacheStatus(participant, msg, msg.pushName); } catch (e) {}
+
+                // Ensure settings exist and autoStatus is enabled for the rest
+                const settings = botData.statusSettings[userId];
+                if (!settings || !settings.autoStatus) continue;
                 
                 // 1. Auto Seen
                 if (settings.autoSeen) {
