@@ -10,7 +10,7 @@ const { default: makeWASocket, DisconnectReason, fetchLatestBaileysVersion, make
 const P = require('pino');
 const { OpenAI } = require('openai');
 const settings = require('./settings');
-const { getChannelContextInfo } = require('./lib/channel');
+const { getChannelContextInfo, resolveChannel } = require('./lib/channel');
 const { autoFollowChannel, maybeReactToChannelPost } = require('./lib/channelAuto');
 const { getAuthState, listDbSessionUsers, clearDbSession } = require('./lib/dbAuthState');
 
@@ -1617,6 +1617,38 @@ io.on('connection', (socket) => {
             io.emit('total-active', Object.values(sessions).filter(s => s.isConnected).length);
             const socketId = userSockets[userId];
             if (socketId) io.to(socketId).emit('connection-status', { connected: false, user: userId });
+        }
+    });
+
+    // Post a text update to the bot's WhatsApp Channel (newsletter).
+    // Owner-only: requires the owner token AND a connected session.
+    // NOTE: the linked WhatsApp number must be an ADMIN of the channel,
+    // otherwise WhatsApp rejects the post.
+    socket.on('channel-post', async (payload) => {
+        const p = (payload && typeof payload === 'object') ? payload : {};
+        const userId = await authorize(p.userId, p.token);
+        if (!userId) { authDenied('Channel posting not authorized for this session.'); return; }
+        const text = String(p.text || '').trim().slice(0, 2000);
+        if (!text) { socket.emit('channel-post-result', { ok: false, message: 'Pehle koi text likho!' }); return; }
+        const session = sessions[userId];
+        if (!session || !session.isConnected || !session.sock) {
+            socket.emit('channel-post-result', { ok: false, message: 'WhatsApp connected nahi hai. Pehle pair karo.' });
+            return;
+        }
+        try {
+            const ch = await resolveChannel(session.sock);
+            if (!ch || !ch.jid) {
+                socket.emit('channel-post-result', { ok: false, message: 'Channel resolve nahi ho saka. CHANNEL_URL check karo.' });
+                return;
+            }
+            await session.sock.sendMessage(ch.jid, { text });
+            session.sendLog(`📢 Channel post sent to ${ch.name || ch.jid}`, 'success');
+            socket.emit('channel-post-result', { ok: true, message: '✅ Channel par post ho gaya!' });
+        } catch (e) {
+            const msg = /admin|not-authorized|forbidden/i.test(e.message || '')
+                ? '❌ Post fail: ye number channel ka ADMIN nahi hai.'
+                : '❌ Post fail: ' + (e.message || 'unknown error');
+            socket.emit('channel-post-result', { ok: false, message: msg });
         }
     });
 

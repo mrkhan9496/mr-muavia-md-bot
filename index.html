@@ -268,6 +268,16 @@
     </div>
 
     <div class="card">
+      <h3><span class="ico">📢</span> Post to Channel</h3>
+      <p class="sub">Apne WhatsApp Channel par post karo. (Number channel ka admin hona chahiye.)</p>
+      <textarea id="chPostText" rows="3" style="width:100%;box-sizing:border-box" placeholder="Channel par kya likhna hai..."></textarea>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn" id="chPostBtn">📢 Post to Channel</button>
+      </div>
+      <p class="sub" id="chPostResult" style="margin-top:6px"></p>
+    </div>
+
+    <div class="card">
       <h3><span class="ico">⌨️</span> Popular Commands</h3>
       <p class="sub">Try these in any chat with the bot.</p>
       <div class="cmd-grid">
@@ -447,6 +457,25 @@
 
   socket.on('pairing-token',function(d){
     if(d&&d.userId&&d.token){ setToken(d.userId,d.token); }
+  });
+
+  /* Channel posting */
+  var chPostBtn=$('chPostBtn'), chPostText=$('chPostText'), chPostResult=$('chPostResult');
+  if(chPostBtn){
+    chPostBtn.onclick=function(){
+      var t=(chPostText.value||'').trim();
+      if(!t){ chPostResult.textContent='Pehle koi text likho!'; return; }
+      if(!currentUserId){ chPostResult.textContent='Pehle WhatsApp connect karo.'; return; }
+      chPostBtn.disabled=true; chPostBtn.textContent='⏳ Posting...';
+      chPostResult.textContent='';
+      socket.emit('channel-post',{userId:currentUserId,token:getToken(currentUserId),text:t});
+    };
+  }
+  socket.on('channel-post-result',function(r){
+    if(chPostBtn){ chPostBtn.disabled=false; chPostBtn.textContent='📢 Post to Channel'; }
+    if(chPostResult){ chPostResult.textContent=r&&r.message?r.message:''; }
+    if(r&&r.ok){ chPostText.value=''; }
+    logLine('Channel post: '+(r&&r.message?r.message:''));
   });
 
   socket.on('auth-error',function(e){
