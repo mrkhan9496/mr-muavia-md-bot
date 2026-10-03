@@ -40,6 +40,16 @@ const commands = {
     tiktok: require('./commands/tiktok'),
     dp: require('./commands/dp'),
     vv: require('./commands/vv'),
+    funtext: require('./commands/funtext'),
+    funrole: require('./commands/funrole'),
+    audiofx: require('./commands/audiofx'),
+    aialias: require('./commands/aialias'),
+    corecmds: require('./commands/core'),
+    stickercmds: require('./commands/sticker'),
+    modcmds: require('./commands/moderation'),
+    praytime: require('./commands/praytime'),
+    tts: require('./commands/tts'),
+    dlalias: require('./commands/dlalias'),
 
     joke: require('./commands/joke'),
     meme: require('./commands/meme'),
@@ -759,16 +769,21 @@ class BotSession {
 
                                             mSec('ᴀɪ', [
                                                 '.ai [query]',
-                                                '.chatgpt',
-                                                '.gemini',
-                                                '.ask',
+                                                '.chatgpt / .gpt / .gpt5',
+                                                '.gemini / .bard',
+                                                '.ask / .bot',
+                                                '.deepseek / .copilot / .codeai',
+                                                '.felo / .brainai / .claudeai',
+                                                '.metai / .perplexity',
+                                                '.jawad / .dj / .professor',
+                                                '.comedy / .studyai',
                                                 '.aiimage (prompt)',
                                                 ...(isAdmin ? ['.ai on/off', '.aion', '.aioff', '.aiclear'] : []),
                                             ]);
 
                                             mSec('ᴅᴏᴡɴʟᴏᴀᴅ', [
-                                                '.tiktok (url)',
-                                                '.insta (url)',
+                                                '.tiktok / .tiktok2 / .tiktok3 (url)',
+                                                '.insta / .igdl / .igdl2 / .igdl3 (url)',
                                                 '.facebook (url)',
                                                 '.song (name)',
                                                 '.video (name)',
@@ -776,6 +791,36 @@ class BotSession {
                                                 '.gdrive (url)',
                                                 '.mf (url)',
                                                 '.movie (name)',
+                                            ]);
+
+                                            mSec('ᴀᴜᴅɪᴏ', [
+                                                '.bass / .deep / .smooth / .fat (reply audio)',
+                                                '.slow / .fast / .nightcore / .chipmunk',
+                                                '.robot / .radio / .demon / .baby',
+                                                '.reverse / .earrape / .blown / .tupai',
+                                                '.tomp3 / .toptt (reply audio)',
+                                                '.tts (text)',
+                                            ]);
+
+                                            mSec('ғᴜɴ ᴛᴇxᴛ', [
+                                                '.ishqmeter / .andhaishq / .lafzmohabbat',
+                                                '.pehlinazar / .dillagi / .khoobsurat',
+                                                '.dhadkan / .pehlaakhat / .ziddidil',
+                                                '.yaadaata / .taubatauba / .pehlamuhabbat',
+                                                '.gulabbhejo / .aankhein / .shayarban',
+                                                '.jaan / .qismatwala / .jhoothpyaar',
+                                                '.nazarutarao / .romanticbakwaas / .dilkhol',
+                                                '.tangkarna / .smilechurao / .mohabbatteri',
+                                                '.perfectmatch / .raazkhola / .taqdir',
+                                                '.personalitytest / .superpower / .pastlife',
+                                                '.darksecret / .celebmatch / .lifebattery',
+                                                '.desimom / .desidad / .khanajudge / .rishtaaunt',
+                                                '.shadiprediction / .stresslevel / .motivationalslap',
+                                                '.pizzaorbiryani / .emotionaldamage / .pakfact',
+                                                '.storygenerate / .botroast / .weeklyreport',
+                                                '.soulcolor / .desiwisdom / .kindness / .newcmds',
+                                                '.compliment2 / .naammatlab / .numbergame',
+                                                '... +120 more! Try any!',
                                             ]);
 
                                             mSec('ɢʀᴏᴜᴘ', [
@@ -818,6 +863,12 @@ class BotSession {
                                                 '.riddle',
                                                 '.wyr',
                                                 '.character (mention)',
+                                                '.dad / .mom / .bhai / .bahan / .wife / .husband',
+                                                '.bestfriend / .enemy / .crush / .teacher',
+                                                '.king / .queen / .boss / .hero / .angel / .devil',
+                                                '.hug / .slap / .kiss / .pat / .poke / .dance',
+                                                '.roast / .compliment / .lovetest / .ship',
+                                                '.pickup / .flirt / .shayari / .motivate',
                                                 '.emojimix (e1+e2)',
                                                 '.flip / .coinflip',
                                                 '.roll [NdM] / .dice',
@@ -841,6 +892,11 @@ class BotSession {
                                             ]);
 
                                             mSec('ᴜᴛɪʟɪᴛʏ', [
+                                                '.sticker (reply image)',
+                                                '.attp (text)',
+                                                '.alive / .help / .ping2',
+                                                '.fetch (url)',
+                                                '.praytime [city]',
                                                 '.calc (expression)',
                                                 '.morse (text)',
                                                 '.qr (text)',
@@ -861,6 +917,10 @@ class BotSession {
 
                                             mSec('ᴘʀᴏᴛᴇᴄᴛɪᴏɴ', [
                                                 ...(isAdmin ? ['.antilink [on/off]', '.antidelete [on/off]', '.anticall [on/off]', '.antistatus [on/off]', '.vv'] : []),
+                                            ]);
+
+                                            mSec('ᴍᴏᴅᴇʀᴀᴛɪᴏɴ', [
+                                                ...(isOwner ? ['.ban / .unban (number)', '.banlist', '.block / .unblock (number)'] : []),
                                             ]);
 
                                             mSec('sᴇᴛᴛɪɴɢs', [
@@ -957,6 +1017,25 @@ class BotSession {
                                         case 'meme': await commands.meme(this.sock, from, msg); break;
                                         case 'movie': case 'film': await commands.movie(this.sock, from, msg, q); break;
                                         case 'aiimage': case 'imagine': case 'aimage': await commands.aiimage(this.sock, from, msg, q); break;
+
+                                        case 'ishqmeter': case 'andhaishq': case 'lafzmohabbat': case 'pehlinazar': case 'dillagi': case 'khoobsurat': case 'dhadkan': case 'pehlaakhat': case 'ziddidil': case 'yaadaata': case 'taubatauba': case 'pehlamuhabbat': case 'wafaimtihaan': case 'donokikahani': case 'gulabbhejo': case 'aankhein': case 'shayarban': case 'dushmandost': case 'tangkarna': case 'smilechurao': case 'jaan': case 'qismatwala': case 'jhoothpyaar': case 'siyaanibaat': case 'mohabbatqarz': case 'nazarutarao': case 'romanticbakwaas': case 'aashiqanaaward': case 'mohabbatteri': case 'dilkhol': case 'gussapyaar': case 'jasoos': case 'tangaphanda': case 'muftadvice': case 'nakhrebaaz': case 'anokhapyaar': case 'bhaaggaya': case 'khushnaseebi': case 'ronewala': case 'waqtguzarna': case 'chandsa': case 'dostyadildar': case 'galatfehmi': case 'perfectmatch': case 'raazkhola': case 'mohabbatdarjaa': case 'dua': case 'khwaabon': case 'akela': case 'bewafa': case 'chakkar': case 'ullubana': case 'taalibajao': case 'neendurai': case 'chatpata': case 'waitingroom': case 'taj': case 'lafangaa': case 'chocolatewala': case 'baatkaatna': case 'palat': case 'gaanasunao': case 'haaththamna': case 'chuprahna': case 'phoolonkahaar': case 'ghoordekhna': case 'bahaana': case 'tarkeeb': case 'hassichhupa': case 'mobileband': case 'pagalpancert': case 'donobaat': case 'kaanpakadna': case 'taqdir': case 'kapkapi': case 'taarifcommit': case 'captioncontest': case 'zyadasocha': case 'ghazab': case 'onlinedekhna': case 'dushmankadushman': case 'buraanamano': case 'mirrormirror': case 'mahero': case 'natkhat': case 'pareshan': case 'interview': case 'kheltamam': case 'rishtapakka': case 'pyaardukaan': case 'zabaansambhlo': case 'jhootawada': case 'sonawala': case 'gossip': case 'funnyrishtedar': case 'aankheband': case 'alvidanahi': case 'personalitytest': case 'superpower': case 'pastlife': case 'darksecret': case 'celebmatch': case 'lifebattery': case 'desimom': case 'desidad': case 'khanajudge': case 'rishtaaunt': case 'challenge': case 'friendtype': case 'pakoraweather': case 'result': case 'cricketcomm': case 'shadiprediction': case 'stresslevel': case 'motivationalslap': case 'wikifact': case 'animepersonality': case 'weathermood': case 'taunt': case 'gharkawifi': case 'lovecalc2': case 'problems': case 'mildroast': case 'wisdomcookie': case 'monsterenergy': case 'socialmedia': case 'whatanimal': case 'typingspeed': case 'nightowl': case 'pizzaorbiryani': case 'emotionaldamage': case 'complainbox': case 'numbergame': case 'coinflip': case 'naammatlab': case 'compliment2': case 'examseason': case 'pakfact': case 'storygenerate': case 'botroast': case 'weeklyreport': case 'soulcolor': case 'desiwisdom': case 'kindness': case 'newcmds': await commands.funtext(this.sock, from, msg, commandName); break;
+                                        case 'character': case 'ringtone': case 'emix': case 'aura': case 'roast': case 'compliment': case 'technologia': case 'flirt': case 'runmureed': case 'marige': case 'pickup': case 'dad': case 'mom': case 'son': case 'daughter': case 'boyfriend': case 'girlfriend': case 'twin': case 'partner': case 'bhai': case 'bahan': case 'wife': case 'husband': case 'chacha': case 'chachi': case 'nana': case 'nani': case 'mama': case 'mami': case 'bestfriend': case 'enemy': case 'crush': case 'teacher': case 'student': case 'rival': case 'bodyguard': case 'boss': case 'employee': case 'pet': case 'servant': case 'idol': case 'fan': case 'ghost': case 'angel': case 'devil': case 'king': case 'queen': case 'slave': case 'master': case 'genius': case 'fool': case 'rich': case 'poor': case 'cry': case 'cuddle': case 'bully': case 'hug': case 'awoo': case 'lick': case 'pat': case 'smug': case 'bonk': case 'yeet': case 'blush': case 'handhold': case 'highfive': case 'nom': case 'wave': case 'smile': case 'wink': case 'happy': case 'glomp': case 'bite': case 'poke': case 'cringe': case 'dance': case 'kill': case 'slap': case 'kiss': case 'cgrt': case 'shapar': case 'bacha': case 'bachi': case 'shayari': case 'motivate': await commands.funrole(this.sock, from, msg, commandName, q); break;
+                                        case 'deep': case 'smooth': case 'fat': case 'tupai': case 'blown': case 'radio': case 'robot': case 'chipmunk': case 'nightcore': case 'earrape': case 'bass': case 'reverse': case 'slow': case 'fast': case 'baby': case 'demon': case 'tomp3': case 'toptt': await commands.audiofx(this.sock, from, msg, commandName); break;
+                                        case 'deepseek': case 'gpt5': case 'copilot': case 'codeai': case 'bot': case 'gpt': case 'felo': case 'bard': case 'brainai': case 'claudeai': case 'metai': case 'perplexity': case 'jawad': case 'dj': case 'professor': case 'comedy': case 'studyai': await commands.aialias(this.sock, from, msg, q, commandName); break;
+                                        case 'alive': await commands.corecmds.alive(this.sock, from, msg); break;
+                                        case 'help': await commands.corecmds.help(this.sock, from, msg); break;
+                                        case 'ping2': await commands.corecmds.ping2(this.sock, from, msg); break;
+                                        case 'fetch': await commands.corecmds.fetch(this.sock, from, msg, q); break;
+                                        case 'sticker': await commands.stickercmds.sticker(this.sock, from, msg, q); break;
+                                        case 'attp': await commands.stickercmds.attp(this.sock, from, msg, q); break;
+                                        case 'ban': await commands.modcmds.ban(this.sock, from, msg, q, {isOwner}); break;
+                                        case 'unban': await commands.modcmds.unban(this.sock, from, msg, q, {isOwner}); break;
+                                        case 'banlist': await commands.modcmds.banlist(this.sock, from, msg, q, {isOwner}); break;
+                                        case 'block': await commands.modcmds.block(this.sock, from, msg, q, {isOwner}); break;
+                                        case 'unblock': await commands.modcmds.unblock(this.sock, from, msg, q, {isOwner}); break;
+                                        case 'praytime': await commands.praytime(this.sock, from, msg, q); break;
+                                        case 'tts': await commands.tts(this.sock, from, msg, q); break;
+                                        case 'tiktok2': case 'tiktok3': case 'ttmp3': case 't': case 'igdl': case 'igdl2': case 'igdl3': case 'igmp3': case 'mp3': case 'audio': await commands.dlalias.dlAlias(this.sock, from, msg, q, commandName, commands); break;
                                         case 'respect': case 'salute': case 'salam': case 'adab': case 'jazakallah': case 'shukria': case 'thankyou': case 'sorry': case 'maafi': case 'tazeem': case 'izzat': case 'qadr': case 'ahsan': case 'mehrbani': case 'nawaz': case 'salaam': case 'tasleem': case 'shandar': case 'zabardast': case 'kamaal': case 'lajawab': case 'mashallah': case 'subhanallah': case 'barkatein': case 'duain': case 'khidmat': case 'ehtram': case 'appreciation': case 'proud': case 'grateful': case 'karam': case 'inayat': case 'lutf': case 'mihr': case 'shafqat': case 'rahmat': case 'naimat': case 'congratulations': case 'mubarak': case 'badhai': case 'tahseen': case 'afreen': case 'wah': case 'khushi': case 'dilse': case 'legend': case 'hero': case 'superstar': case 'rockstar': case 'champion': case 'boss': case 'king': case 'queen': case 'gem': case 'diamond': case 'precious': case 'valuable': case 'deserving': case 'inspiration': case 'rolemodel': case 'mentor': case 'genius': case 'talent': case 'skillful': case 'awesome': case 'wonderful': case 'fantastic': case 'excellence': case 'perfect': case 'blessed': await commands.respect(this.sock, from, msg, commandName); break;
                                         case 'vv': await commands.vv(this.sock, from, msg); break;
                                         case 'dp': await commands.dp(this.sock, from, msg); break;
