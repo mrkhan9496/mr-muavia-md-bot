@@ -63,14 +63,16 @@ async function handleAutoAI(sock, msg, from, text, botData, saveBotData, userId,
     st.lastReply = now;
 
     try {
-        // Build prompt with limited history
-        let prompt = text;
+        // Build prompt with limited history. NOTE: history is formatted
+        // WITHOUT "Bot:" labels — the model was copying that label into its
+        // replies. Explicit instruction: reply like a human friend, no labels.
+        let prompt = `You are chatting as a friendly human on WhatsApp. Reply naturally and concisely in the same language as the user (Roman Urdu if they use it). Never start your reply with "Bot:", "Assistant:" or any label — just reply directly like a real person.\n\nUser: ${text}`;
         if (st.history.length) {
             const convo = st.history
                 .slice(-MAX_HISTORY * 2)
-                .map((h) => `${h.role === 'user' ? 'User' : 'Bot'}: ${h.content}`)
+                .map((h) => (h.role === 'user' ? `Friend: ${h.content}` : `You: ${h.content}`))
                 .join('\n');
-            prompt = `Previous conversation:\n${convo}\n\nUser: ${text}\nReply naturally and concisely.`;
+            prompt = `You are chatting as a friendly human on WhatsApp. Reply naturally and concisely in the same language as the user (Roman Urdu if they use it). Never start your reply with "Bot:", "Assistant:" or any label — just reply directly like a real person.\n\nPrevious conversation:\n${convo}\n\nFriend: ${text}\nYou:`;
         }
         const { result } = await apiManager.ai(prompt, session);
         const reply = result.text;

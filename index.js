@@ -456,10 +456,20 @@ class BotSession {
         try {
             const completion = await openai.chat.completions.create({
                 model: process.env.AI_MODEL || "gpt-3.5-turbo",
-                messages: [{ role: "system", content: "Helpful assistant." }, { role: "user", content: userMessage }],
+                messages: [
+                    { role: "system", content: "You are chatting as a friendly human on WhatsApp. Reply naturally and concisely in the user's language (Roman Urdu if they use it). Never start with \"Bot:\", \"Assistant:\" or any label — just reply directly like a real person." },
+                    { role: "user", content: userMessage }
+                ],
                 max_tokens: 150
             });
-            return completion.choices[0].message.content.trim();
+            let text = completion.choices[0].message.content.trim();
+            // Strip any leading Bot:/Assistant: label the model may add
+            for (let i = 0; i < 3; i++) {
+                const next = text.replace(/^(bot|assistant|ai|chatbot)\s*[:：-]\s*/i, '').trim();
+                if (next === text) break;
+                text = next;
+            }
+            return text;
         } catch (error) {
             return "❌ AI Error: " + error.message;
         }
