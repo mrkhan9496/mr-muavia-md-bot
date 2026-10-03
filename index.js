@@ -533,22 +533,57 @@ class BotSession {
 
             if (pairingNumber && !state.creds.registered) {
                 if (!this.sock.authState.creds.registered) {
-                    await delay(3000);
-                    try {
-                        let code = await this.sock.requestPairingCode(pairingNumber);
-                        code = code?.match(/.{1,4}/g)?.join("-") || code;
-                        this.sendLog(`🔑 Pairing Code: ${code}`, 'success');
-                        
-                        // Send to Telegram if chat ID exists
-                        if (this.tgChatId) {
-                            await tgBot.sendMessage(this.tgChatId, "🔑 𝗬𝗢𝗨𝗥 𝗣𝗔𝗜𝗥𝗜𝗡𝗚 𝗖𝗢𝗗𝗘: " + code + "\n\n_Enter this code in your WhatsApp to connect._");
-                        }
+                    // Wait for WebSocket to be ready before requesting pairing code
+                    // (requestPairingCode fails silently if socket isn't connected)
+                    const waitForSocket = () => new Promise((resolve) => {
+                        let done = false;
+                        const finish = (ok) => { if (!done) { done = true; resolve(ok); } };
+                        const timer = setTimeout(() => finish(true), 15000);
+                        this.sock.ev.on('connection.update', function handler(update) {
+                            if (update.connection === 'connecting' || update.connection === 'open') {
+                                clearTimeout(timer);
+                                finish(true);
+                            }
+                        });
+                        // If already connecting, resolve soon
+                        setTimeout(() => finish(true), 5000);
+                    });
+                    await waitForSocket();
+                    await delay(2000);
 
-                        const socketId = userSockets[this.userId];
-                        if (socketId) io.to(socketId).emit('pairing-code', code);
+                    // Retry pairing code request up to 3 times
+                    let code = null;
+                    let lastErr = null;
+                    for (let attempt = 1; attempt <= 3; attempt++) {
+                        try {
+                            this.sendLog(`🔑 Requesting pairing code (attempt ${attempt}/3)...`, 'info');
+                            code = await this.sock.requestPairingCode(pairingNumber);
+                            if (code) break;
+                        } catch (err) {
+                            lastErr = err;
+                            this.sendLog(`⚠️ Attempt ${attempt} failed: ${err.message}`, 'warning');
+                            if (attempt < 3) await delay(3000);
+                        }
+                    }
+
+                    const socketId = userSockets[this.userId];
+                    try {
+                        if (code) {
+                            code = code?.match(/.{1,4}/g)?.join("-") || code;
+                            this.sendLog(`🔑 Pairing Code: ${code}`, 'success');
+
+                            // Send to Telegram if chat ID exists
+                            if (this.tgChatId) {
+                                await tgBot.sendMessage(this.tgChatId, "🔑 𝗬𝗢𝗨𝗥 𝗣𝗔𝗜𝗥𝗜𝗡𝗚 𝗖𝗢𝗗𝗘: " + code + "\n\n_Enter this code in your WhatsApp to connect._");
+                            }
+
+                            if (socketId) io.to(socketId).emit('pairing-code', code);
+                            else this.sendLog('⚠️ Browser socket not found, code logged above', 'warning');
+                        } else {
+                            throw lastErr || new Error('No pairing code returned');
+                        }
                     } catch (err) {
                         this.sendLog(`❌ Pairing error: ${err.message}`, 'error');
-                        const socketId = userSockets[this.userId];
                         if (socketId) io.to(socketId).emit('pairing-error', { message: err.message || 'Pairing failed' });
                         if (this.tgChatId) {
                             await tgBot.sendMessage(this.tgChatId, "❌ Pairing Error: " + err.message);
