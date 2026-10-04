@@ -625,6 +625,66 @@ class BotSession {
                 applyGhostMode(this.sock, isGhostEnabled(botData, this.userId));
             } catch {}
 
+            // FIX for Baileys #2737: stock requestPairingCode() returns a code
+            // WITHOUT waiting for the server. If the server rejects (400),
+            // the user gets a bogus code that "Couldn't link device".
+            // This override uses query() (waits for response) and only
+            // returns the code after the server accepts it.
+            try {
+                const { bytesToCrockford, derivePairingCodeKey, aesEncryptCTR, jidEncode } = require('@whiskeysockets/baileys');
+                const { randomBytes } = require('crypto');
+                const sockRef = this.sock;
+                const origRPC = sockRef.requestPairingCode.bind(sockRef);
+                sockRef.requestPairingCode = async (phoneNumber, customPairingCode) => {
+                    const pairingCode = customPairingCode ?? bytesToCrockford(randomBytes(5));
+                    if (customPairingCode && customPairingCode?.length !== 8) {
+                        throw new Error('Custom pairing code must be exactly 8 chars');
+                    }
+                    const creds = sockRef.authState.creds;
+                    creds.pairingCode = pairingCode;
+                    creds.me = { id: jidEncode(phoneNumber, 's.whatsapp.net'), name: '~' };
+                    sockRef.ev.emit('creds.update', creds);
+                    // Build the encrypted ephemeral key (same as stock)
+                    const salt = randomBytes(32);
+                    const iv = randomBytes(16);
+                    const key = await derivePairingCodeKey(pairingCode, salt);
+                    const ciphered = aesEncryptCTR(creds.pairingEphemeralKeyPair.public, key, iv);
+                    const wrappedKey = Buffer.concat([salt, iv, ciphered]);
+                    const browser = sockRef.browser || ['Ubuntu', 'Chrome', '120.0.0'];
+                    // query() WAITS for the server reply — throws on 400/error.
+                    // Stock sendNode() is fire-and-forget (the bug).
+                    await sockRef.query({
+                        tag: 'iq',
+                        attrs: {
+                            to: '@s.whatsapp.net',
+                            type: 'set',
+                            id: 'pair-' + Date.now(),
+                            xmlns: 'md'
+                        },
+                        content: [{
+                            tag: 'link_code_companion_reg',
+                            attrs: {
+                                jid: creds.me.id,
+                                stage: 'companion_hello',
+                                should_show_push_notification: 'true'
+                            },
+                            content: [
+                                { tag: 'link_code_pairing_wrapped_companion_ephemeral_pub', attrs: {}, content: wrappedKey },
+                                { tag: 'companion_server_auth_key_pub', attrs: {}, content: creds.noiseKey.public },
+                                { tag: 'companion_platform_id', attrs: {}, content: '1' },
+                                { tag: 'companion_platform_display', attrs: {}, content: `${browser[1]} (${browser[0]})` },
+                                { tag: 'link_code_pairing_nonce', attrs: {}, content: '0' }
+                            ]
+                        }]
+                    });
+                    // Server accepted — code is real.
+                    return pairingCode;
+                };
+                this.sendLog('🔧 Pairing code fix applied (server-confirmed codes only).', 'info');
+            } catch (e) {
+                this.sendLog(`⚠️ Pairing fix not applied: ${e.message}`, 'warning');
+            }
+
             // Global reply branding: every text reply from any command carries
             // the bot name. Skips reactions, media messages, and anything that
             // already carries a POWERED BY line (menu, downloaders, etc.).
