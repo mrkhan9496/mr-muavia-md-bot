@@ -22,7 +22,7 @@ module.exports = {
     // Env vars (Railway Variables) override these values when set.
     promoLinks: {
         channel: process.env.PROMO_CHANNEL_LINK || 'https://whatsapp.com/channel/0029VbAYFuA7z4kXHVNHfM1Y',
-        panel: process.env.PROMO_PANEL_LINK || 'https://web-production-0bb99.up.railway.app/',
+        panel: process.env.PROMO_PANEL_LINK || 'https://mr-muavia-bot00339.up.railway.app/',
         additional: process.env.PROMO_ADDITIONAL_LINK || '',
         support: process.env.PROMO_SUPPORT_LINK || 'https://chat.whatsapp.com/Cw1BHAsPyG4HZb9ZPSnc4n',
     }
