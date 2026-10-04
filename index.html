@@ -407,7 +407,10 @@
   pairBtn.onclick=function(){
     var cc=countrySelect.value||'';
     var local=cleanNumber(waNumber.value).replace(/^0+/,'');
-    var digits=cc+local;
+    // If user typed the full international number (already starts with
+    // country code), don't double-prefix it. e.g. "92"+"923464137800"
+    // must NOT become "92923464137800".
+    var digits = (cc && local.indexOf(cc) === 0) ? local : cc+local;
     if(digits.length<7||digits.length>15){
       numErr.style.display='block';waNumber.focus();return;
     }
