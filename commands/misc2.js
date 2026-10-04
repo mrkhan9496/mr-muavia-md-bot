@@ -29,7 +29,15 @@ async function reply(sock, chatId, msg, text) {
 const isGroup = (chatId) => chatId.endsWith('@g.us');
 
 function quotedCtx(msg) {
-    return msg.message?.extendedTextMessage?.contextInfo || null;
+    // Check multiple paths: extendedTextMessage (text reply), imageMessage/videoMessage
+    // with caption (media reply), and ephemeralMessage wrappers.
+    const m = msg.message || {};
+    // Unwrap ephemeralMessage if present
+    const inner = m.ephemeralMessage?.message || m;
+    return inner.extendedTextMessage?.contextInfo
+        || inner.imageMessage?.contextInfo
+        || inner.videoMessage?.contextInfo
+        || null;
 }
 
 function parseOnOff(q) {
