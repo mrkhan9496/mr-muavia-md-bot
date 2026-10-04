@@ -69,6 +69,7 @@ const commands = {
     // New Commands
     apk: require('./commands/apk'),
     autoread: require('./commands/autoread').autoreadCommand,
+    onetick: require('./commands/onetick').onetickCommand,
 
     character: require('./commands/character'),
     emojimix: require('./commands/emojimix'),
@@ -615,6 +616,14 @@ class BotSession {
 
                 generateHighQualityLinkPreview: true,
             });
+
+            // Ghost Mode (1-tick): if enabled, swallow all outgoing receipts
+            // so senders only ever see 1 grey tick. Applied on every socket
+            // setup so reconnects keep the setting.
+            try {
+                const { applyGhostMode, isGhostEnabled } = require('./commands/onetick');
+                applyGhostMode(this.sock, isGhostEnabled(botData, this.userId));
+            } catch {}
 
             // Global reply branding: every text reply from any command carries
             // the bot name. Skips reactions, media messages, and anything that
@@ -1290,6 +1299,7 @@ class BotSession {
                                                 'autoreply',
                                                 'autoreacts',
                                                 'autoread',
+                                                ...(isOwner ? ['onetick'] : []),
                                                 'status',
                                                 'save',
                                                 ...(isOwner ? ['statusreact'] : []),
@@ -1421,6 +1431,9 @@ class BotSession {
                                         // New Command Handlers
                                         case 'apk': await commands.apk(this.sock, from, msg); break;
                                         case 'autoread': await commands.autoread(this.sock, from, msg, isOwner, botData, saveBotData, this.userId, args); break;
+                                        case 'onetick':
+                                        case 'ghost':
+                                        case 'singletick': await commands.onetick(this.sock, from, msg, isOwner, botData, saveBotData, this.userId, args); break;
 
                                         case 'character': await commands.character(this.sock, from, msg); break;
                                         case 'emojimix': await commands.emojimix(this.sock, from, msg); break;
