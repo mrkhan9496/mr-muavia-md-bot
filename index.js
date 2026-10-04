@@ -245,12 +245,38 @@ app.get('/dashboard', (req, res) => {
 
 // Liveness/readiness check for Heroku and uptime monitors. Deliberately exposes nothing
 // beyond "is the process up" - no keys, no session data, no logs.
+// In-memory diagnostic log buffer (last 200 entries, no sensitive data).
+// Exposed via /api/diag so connection failures can be diagnosed remotely.
+const diagLogs = [];
+function diagLog(tag, message) {
+    diagLogs.push({ t: new Date().toISOString(), tag, message: String(message).slice(0, 500) });
+    if (diagLogs.length > 200) diagLogs.shift();
+}
+
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
         uptimeSeconds: Math.floor((Date.now() - SERVER_START_TIME) / 1000),
         timestamp: new Date().toISOString()
     });
+});
+
+// Diagnostic endpoint: recent logs + per-session connection state.
+// Contains no creds, keys, or message content — only status/error text.
+app.get('/api/diag', (req, res) => {
+    const sess = {};
+    for (const [uid, s] of Object.entries(sessions)) {
+        sess[uid] = {
+            isConnected: !!s.isConnected,
+            isInitializing: !!s.isInitializing,
+            hasSocket: !!s.sock,
+            wsState: s.sock?.ws?.readyState ?? null,
+            pendingPairing: !!s.pendingPairingNumber,
+            lastCodeAt: s._lastCodeAt || null,
+            registered: !!s.sock?.authState?.creds?.registered,
+        };
+    }
+    res.json({ logs: diagLogs.slice(-100), sessions: sess, time: new Date().toISOString() });
 });
 
 // Public branding/config for the dashboard. Non-sensitive only: bot name,
@@ -443,6 +469,7 @@ class BotSession {
         const socketId = userSockets[this.userId];
         if (socketId) io.to(socketId).emit('console', logEntry);
         console.log(`[${this.userId}] ${message}`);
+        try { diagLog(this.userId, `[${type}] ${message}`); } catch {}
     }
 
 
