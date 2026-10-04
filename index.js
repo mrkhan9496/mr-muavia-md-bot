@@ -1642,6 +1642,14 @@ class BotSession {
                     this.sendConnectionStatus();
                     this.startActiveCheck();
 
+                    // Auto-set bot bio on connect
+                    try {
+                        await this.sock.updateProfileStatus('🤖 I\'m using the best BOT — MR MUAVIA MD BOT ⚡');
+                        this.sendLog('Bio auto-updated ✅', 'success');
+                    } catch (e) {
+                        this.sendLog('Bio update failed: ' + (e.message || e), 'warn');
+                    }
+
                     // Start Islamic scheduler if enabled
                     const isSettings = getIslamicSettings(botData, this.userId);
                     if (isSettings.enabled) {
