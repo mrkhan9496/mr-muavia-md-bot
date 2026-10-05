@@ -1878,6 +1878,32 @@ process.on('unhandledRejection', (reason) => {
 process.on('uncaughtException', (err) => {
     console.error('[FATAL-GUARD] uncaughtException:', err && err.message ? err.message : err);
 });
+
+// Graceful shutdown: close WhatsApp connections cleanly on SIGTERM/SIGINT
+// (Railway redeploy). Without this, the old container is killed while still
+// connected, causing 440 conflicts that corrupt sessions on the new container.
+let _shuttingDown = false;
+async function gracefulShutdown(signal) {
+    if (_shuttingDown) return;
+    _shuttingDown = true;
+    console.log(`[System] ${signal} received — closing WhatsApp sessions gracefully...`);
+    const ids = Object.keys(sessions);
+    await Promise.all(ids.map(async (userId) => {
+        try {
+            const s = sessions[userId];
+            if (s && s.sock) {
+                // End the Baileys socket so WhatsApp sees a clean disconnect
+                if (typeof s.sock.end === 'function') await s.sock.end();
+                else if (s.sock.ws && typeof s.sock.ws.close === 'function') s.sock.ws.close();
+            }
+        } catch (e) { /* ignore */ }
+    }));
+    console.log('[System] All sessions closed. Exiting.');
+    try { server.close(); } catch (e) {}
+    setTimeout(() => process.exit(0), 500);
+}
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 server.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     
