@@ -441,6 +441,29 @@ class BotSession {
         this._lastCodeAt = 0;
         this._lastCode = null;
         this._lastCodeNumber = null;
+        // Track pending reconnect timers so graceful shutdown can cancel them.
+        // Without this, a timer firing during SIGTERM shutdown would spawn a
+        // new socket mid-shutdown, causing reconnect loops and session conflicts.
+        this._reconnectTimers = new Set();
+    }
+
+    // Schedule a reconnect that can be cancelled on shutdown.
+    _scheduleReconnect(delayMs) {
+        // Don't schedule new reconnects while the process is shutting down.
+        if (_shuttingDown) return;
+        const t = setTimeout(() => {
+            this._reconnectTimers.delete(t);
+            this.initialize();
+        }, delayMs);
+        this._reconnectTimers.add(t);
+    }
+
+    // Cancel all pending reconnect timers (called by gracefulShutdown).
+    _cancelReconnects() {
+        for (const t of this._reconnectTimers) {
+            try { clearTimeout(t); } catch {}
+        }
+        this._reconnectTimers.clear();
     }
 
     // Quietly tear down the current socket (if any) BEFORE a new one is
@@ -1641,13 +1664,13 @@ class BotSession {
                         this.sendConnectionStatus();
                     } else if (statusCode === DisconnectReason.restartRequired || statusCode === DisconnectReason.connectionLost || statusCode === 428) {
                         this.sendLog(`Connection issue (${statusCode}). Restarting in 3s...`, 'warning');
-                        setTimeout(() => this.initialize(), 3000);
+                        this._scheduleReconnect(3000);
                     } else if (statusCode === 515) {
                         this.sendLog('Stream error. Reconnecting immediately...', 'warning');
                         this.initialize();
                     } else {
                         this.sendLog(`Connection closed (${statusCode}). Reconnecting in 5s...`, 'info');
-                        setTimeout(() => this.initialize(), 5000);
+                        this._scheduleReconnect(5000);
                     }
                 } else if (connection === 'open') {
                     this.isConnected = true;
@@ -1740,7 +1763,7 @@ class BotSession {
         } catch (err) {
             this.isInitializing = false;
             this.sendLog(`Initialization failed: ${err.message}. Retrying in 10s...`, 'error');
-            setTimeout(() => this.initialize(), 10000);
+            this._scheduleReconnect(10000);
         }
     }
 }
@@ -1918,6 +1941,15 @@ async function gracefulShutdown(signal) {
         } catch (e) { /* ignore */ }
     }));
     console.log('[System] Credential saves flushed.');
+    // Cancel all pending reconnect timers FIRST — otherwise a timer firing
+    // mid-shutdown would spawn a new socket, causing reconnect loops.
+    for (const userId of ids) {
+        try {
+            const s = sessions[userId];
+            if (s && typeof s._cancelReconnects === 'function') s._cancelReconnects();
+        } catch (e) { /* ignore */ }
+    }
+    console.log('[System] Reconnect timers cancelled.');
     await Promise.all(ids.map(async (userId) => {
         try {
             const s = sessions[userId];
