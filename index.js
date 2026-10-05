@@ -394,8 +394,11 @@ async function loadExistingSessions() {
             console.log(`[System] Found existing session for: ${userId}. Initializing...`);
             if (!sessions[userId]) {
                 sessions[userId] = new BotSession(userId);
-                // Start initialization without a pairing number (it will use existing creds)
-                sessions[userId].initialize().catch(err => {
+                // Start initialization without a pairing number (it will use existing creds).
+                // isStartup=true: NEVER request a pairing code on container restart —
+                // just reconnect with saved credentials. Pairing codes are only for
+                // explicit user action via the panel.
+                sessions[userId].initialize(null, true).catch(err => {
                     console.error(`[System] Failed to auto-initialize session ${userId}:`, err.message);
                 });
             }
@@ -529,10 +532,17 @@ class BotSession {
         }, 60 * 60 * 1000); // Once per hour
     }
 
-    async initialize(pairingNumber = null) {
+    async initialize(pairingNumber = null, isStartup = false) {
         if (this.isInitializing) {
             this.sendLog("Initialization already in progress...", "info");
             return;
+        }
+        // On container startup (isStartup=true), NEVER request a pairing code.
+        // Just reconnect with saved DB credentials. This restores the old
+        // behavior: restart = auto-reconnect, no manual re-pairing needed.
+        if (isStartup) {
+            this.pendingPairingNumber = null;
+            this.sendLog('Startup reconnect — using saved session, no pairing code.', 'info');
         }
         // Remember pairing number for reconnection (so code stays valid)
         if (pairingNumber) this.pendingPairingNumber = pairingNumber;
@@ -704,7 +714,11 @@ class BotSession {
             };
 
             const effectivePairingNumber = pairingNumber || this.pendingPairingNumber;
-            if (effectivePairingNumber && !state.creds.registered) {
+            // On startup reconnect, NEVER request a pairing code — just use saved creds.
+            // (isStartup flag set by loadExistingSessions.)
+            if (isStartup) {
+                this.sendLog('Startup mode: skipping pairing code request, connecting with saved credentials.', 'info');
+            } else if (effectivePairingNumber && !state.creds.registered) {
                 if (!this.sock.authState.creds.registered) {
                     // Decide: fresh code or reuse? Explicit user action
                     // (pairingNumber given) always gets a fresh code.
