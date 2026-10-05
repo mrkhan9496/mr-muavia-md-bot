@@ -464,6 +464,13 @@ class BotSession {
         return this._saveChain;
     }
 
+    // Wait for all pending credential saves to finish (for graceful shutdown).
+    async flushSaves() {
+        try {
+            if (this._saveChain) await this._saveChain;
+        } catch (e) { /* ignore */ }
+    }
+
     getPrefix() {
         return botData.prefixSettings?.[this.userId] || '.';
     }
@@ -1902,6 +1909,15 @@ async function gracefulShutdown(signal) {
     _shuttingDown = true;
     console.log(`[System] ${signal} received — closing WhatsApp sessions gracefully...`);
     const ids = Object.keys(sessions);
+    // FIRST: flush all pending credential saves to DB so sessions restore correctly.
+    // Without this, a restart can read stale creds and WhatsApp rejects them.
+    await Promise.all(ids.map(async (userId) => {
+        try {
+            const s = sessions[userId];
+            if (s && typeof s.flushSaves === 'function') await s.flushSaves();
+        } catch (e) { /* ignore */ }
+    }));
+    console.log('[System] Credential saves flushed.');
     await Promise.all(ids.map(async (userId) => {
         try {
             const s = sessions[userId];
