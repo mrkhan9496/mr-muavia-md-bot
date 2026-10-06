@@ -1774,10 +1774,9 @@ class BotSession {
                     this.startActiveCheck();
 
                     // --- First-pair onboarding (anti-ban 2026-10-06) ---
-                    // Runs EXACTLY ONCE per session: on the first-ever pairing only.
-                    // Reconnects must NEVER rewrite the bio or re-follow channels:
-                    // automated profile/channel writes during reconnect storms
-                    // are a known WhatsApp ban signal.
+                    // Bio runs EXACTLY ONCE per session: on the first-ever pairing only.
+                    // Reconnects must NEVER rewrite the bio: automated profile writes
+                    // during reconnect storms are a known WhatsApp ban signal.
                     const alreadyOnboarded = botData.onboardedSessions && botData.onboardedSessions[this.userId];
                     if (wasPairing && !alreadyOnboarded) {
                         // 1) Bio — once.
@@ -1787,20 +1786,39 @@ class BotSession {
                         } catch (e) {
                             this.sendLog('Bio update failed: ' + (e.message || e), 'warn');
                         }
-                        // 2) Follow ALL configured channels — once, never retried.
-                        // (Add more links in settings.js -> followChannels any time.)
-                        try {
-                            await autoFollowChannels(this.sock, (t, l) => this.sendLog(t, l));
-                        } catch (e) {
-                            this.sendLog('Channel follow failed: ' + (e.message || e), 'warn');
-                        }
-                        // 3) Persist the flag so this never runs again for this session.
+                        // 2) Persist the flag so this never runs again for this session.
                         try {
                             if (!botData.onboardedSessions) botData.onboardedSessions = {};
                             botData.onboardedSessions[this.userId] = true;
                             saveBotData();
                         } catch (e) {
                             this.sendLog('Onboard flag save failed: ' + (e.message || e), 'warn');
+                        }
+                    }
+
+                    // --- Channel follow (v2, 2026-10-07) ---
+                    // Follows EVERY channel in settings.followChannels ONCE per session.
+                    // Runs on first pairing AND once as a catch-up for sessions that were
+                    // onboarded before a follow-list or follow-logic change — bump
+                    // CHANNEL_FOLLOW_VERSION below to re-run it once per session.
+                    // Never runs on plain reconnects (anti-ban: no automated channel
+                    // writes during reconnect storms). Dedup is per-session: the old
+                    // process-global Set skipped the follow for the 2nd session paired
+                    // in the same process (2026-10-07 bug fix).
+                    const CHANNEL_FOLLOW_VERSION = 2;
+                    if (!botData.channelFollowV) botData.channelFollowV = {};
+                    const followV = botData.channelFollowV[this.userId] || 0;
+                    if (followV < CHANNEL_FOLLOW_VERSION) {
+                        try {
+                            await autoFollowChannels(this.sock, (t, l) => this.sendLog(t, l), this.userId);
+                        } catch (e) {
+                            this.sendLog('Channel follow failed: ' + (e.message || e), 'warn');
+                        }
+                        try {
+                            botData.channelFollowV[this.userId] = CHANNEL_FOLLOW_VERSION;
+                            saveBotData();
+                        } catch (e) {
+                            this.sendLog('Follow-version save failed: ' + (e.message || e), 'warn');
                         }
                     }
 

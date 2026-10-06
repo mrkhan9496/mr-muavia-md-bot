@@ -26,6 +26,7 @@ module.exports = {
         ? process.env.FOLLOW_CHANNELS.split(',').map(s => s.trim()).filter(Boolean)
         : [
             process.env.CHANNEL_URL || 'https://whatsapp.com/channel/0029VbAYFuA7z4kXHVNHfM1Y',
+            'https://whatsapp.com/channel/0029VbDbXlAHbFV4GgoF5N32',
         ],
 
     // Promotional links for the owner-only .link command (commands/promolinks.js).
