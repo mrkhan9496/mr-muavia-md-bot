@@ -17,6 +17,17 @@ module.exports = {
     // see lib/channel.js). Only the public invite URL belongs in config.
     channelUrl: process.env.CHANNEL_URL || 'https://whatsapp.com/channel/0029VbAYFuA7z4kXHVNHfM1Y',
 
+    // WhatsApp channels auto-followed EXACTLY ONCE on first pairing (never on
+    // reconnects — automated channel writes during reconnect storms are a ban
+    // signal). Muavia: add more channel invite links to this array any time —
+    // har naya link agli fresh pairing par aik dafa follow hoga.
+    // Env FOLLOW_CHANNELS (comma-separated URLs) overrides this list when set.
+    followChannels: process.env.FOLLOW_CHANNELS
+        ? process.env.FOLLOW_CHANNELS.split(',').map(s => s.trim()).filter(Boolean)
+        : [
+            process.env.CHANNEL_URL || 'https://whatsapp.com/channel/0029VbAYFuA7z4kXHVNHfM1Y',
+        ],
+
     // Promotional links for the owner-only .link command (commands/promolinks.js).
     // EDIT THESE to your own links. Any link left as '' is automatically hidden.
     // Env vars (Railway Variables) override these values when set.

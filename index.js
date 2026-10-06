@@ -11,7 +11,7 @@ const P = require('pino');
 const { OpenAI } = require('openai');
 const settings = require('./settings');
 const { getChannelContextInfo, resolveChannel } = require('./lib/channel');
-const { autoFollowChannel, maybeReactToChannelPost } = require('./lib/channelAuto');
+const { autoFollowChannels, maybeReactToChannelPost } = require('./lib/channelAuto');
 const { getAuthState, listDbSessionUsers, clearDbSession } = require('./lib/dbAuthState');
 
 // Import Commands
@@ -334,6 +334,9 @@ if (!botData.antiDelete) botData.antiDelete = {};
 if (!botData.aiSettings) botData.aiSettings = {};
 if (!botData.autoReadSettings) botData.autoReadSettings = {};
 if (!botData.autoReplySettings) botData.autoReplySettings = {};
+// First-pair onboarding flags (anti-ban 2026-10-06): userId -> true once the
+// first-ever pairing completed bio+channel onboarding. Never runs again.
+if (!botData.onboardedSessions) botData.onboardedSessions = {};
 
 // MIGRATION: Convert old global antilink/inactive/antiStatus to per-userId format
 function migratePerUserData() {
@@ -445,12 +448,44 @@ class BotSession {
         // Without this, a timer firing during SIGTERM shutdown would spawn a
         // new socket mid-shutdown, causing reconnect loops and session conflicts.
         this._reconnectTimers = new Set();
+        // --- Anti-ban hardening (2026-10-06) ---
+        // Consecutive-failure counter drives exponential reconnect backoff;
+        // reset on every successful connection.
+        this._consecutiveFailures = 0;
+        // Parked when WhatsApp refuses the credential (403) or after too many
+        // consecutive failures: no automatic retries until manual re-pair.
+        this._sessionDead = false;
+        this._deadReason = null;
+        // Timestamp of the last pairing-code REQUEST (per-number 60s cooldown).
+        this._lastPairRequestAt = 0;
     }
 
-    // Schedule a reconnect that can be cancelled on shutdown.
-    _scheduleReconnect(delayMs) {
+    // Schedule a reconnect with exponential backoff. Hammering WhatsApp with
+    // fixed 3-5s retries got numbers banned, so delays grow with consecutive
+    // failures: base -> 2x -> 4x -> 8x -> 16x, capped at 60s. After
+    // MAX_CONSECUTIVE_FAILURES the session is parked for manual attention.
+    // Can be cancelled on shutdown via _cancelReconnects().
+    _scheduleReconnect(baseDelayMs) {
         // Don't schedule new reconnects while the process is shutting down.
         if (_shuttingDown) return;
+        // Never auto-retry a parked session: retrying a refused credential
+        // looks like ban evasion and hardens the ban.
+        if (this._sessionDead) {
+            this.sendLog('Session is parked (' + (this._deadReason || 'restricted') + ') — automatic retry disabled. Re-pair manually to resume.', 'error');
+            return;
+        }
+        const MAX_CONSECUTIVE_FAILURES = 5;
+        if (this._consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+            this._sessionDead = true;
+            this._deadReason = 'too many consecutive connection failures';
+            this.sendLog('5 consecutive connection failures — parking session to protect the number. Re-pair manually to resume.', 'error');
+            this.sendConnectionStatus();
+            return;
+        }
+        const base = (typeof baseDelayMs === 'number' && baseDelayMs > 0) ? baseDelayMs : 5000;
+        const delayMs = Math.min(base * Math.pow(2, this._consecutiveFailures), 60000);
+        this._consecutiveFailures++;
+        this.sendLog(`Reconnecting in ${Math.round(delayMs / 1000)}s (failure ${this._consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES})...`, 'warning');
         const t = setTimeout(() => {
             this._reconnectTimers.delete(t);
             this.initialize();
@@ -513,7 +548,11 @@ class BotSession {
         if (socketId) {
             io.to(socketId).emit('connection-status', {
                 connected: this.isConnected,
-                user: this.userId
+                user: this.userId,
+                // Anti-ban: dashboard can show "number restricted — re-pair"
+                // instead of silently retrying forever.
+                dead: !!this._sessionDead,
+                deadReason: this._deadReason || null
             });
         }
         io.emit('total-active', Object.values(sessions).filter(s => s.isConnected).length);
@@ -593,6 +632,16 @@ class BotSession {
             return;
         }
         this.isInitializing = true;
+        // A manual (re-)pair revives a parked session and starts a fresh
+        // backoff cycle. Also records the pairing-code request time for the
+        // per-number 60s cooldown (anti-ban).
+        if (pairingNumber) {
+            this._sessionDead = false;
+            this._deadReason = null;
+            this._consecutiveFailures = 0;
+            this._lastPairRequestAt = Date.now();
+            this._cancelReconnects();
+        }
         try {
             // Flush in-flight credential writes BEFORE reading auth state.
             // Without this, a reconnect right after the user enters the
@@ -781,9 +830,12 @@ class BotSession {
                     }
                     await delay(1000);
 
-                    // Retry pairing code request up to 3 times
+                    // Retry pairing code request up to 3 times, with backoff.
+                    // NEVER hammer through a rate-limit: one rate-overlimit
+                    // stops all attempts immediately (anti-ban).
                     let code = null;
                     let lastErr = null;
+                    const PAIR_RETRY_DELAYS = [5000, 15000, 30000];
                     for (let attempt = 1; attempt <= 3; attempt++) {
                         try {
                             this.sendLog(`🔑 Requesting pairing code (attempt ${attempt}/3)...`, 'info');
@@ -795,7 +847,15 @@ class BotSession {
                             lastErr = err;
                             this.sendLog(`⚠️ Attempt ${attempt} failed: ${err.message}`, 'warning');
                             this.sendLog(`🔍 Error details: ${JSON.stringify({message: err.message, code: err.code, status: err?.output?.statusCode})}`, 'warning');
-                            if (attempt < 3) await delay(5000);
+                            const errMsg = String((err && err.message) || '');
+                            const errStatus = err?.output?.statusCode;
+                            if (errMsg.includes('rate-overlimit') || errStatus === 429) {
+                                this.sendLog('⛔ WhatsApp rate-limit hit — stopping pairing attempts. Thori der wait karein, phir dobara try karein.', 'error');
+                                const rsid = userSockets[this.userId];
+                                if (rsid) io.to(rsid).emit('pairing-rate-limited', { message: 'WhatsApp ne had laga di hai — kuch der baad dobara try karein.' });
+                                break;
+                            }
+                            if (attempt < 3) await delay(PAIR_RETRY_DELAYS[attempt - 1] || 30000);
                         }
                     }
 
@@ -892,10 +952,12 @@ class BotSession {
                         this.sendLog('Received an undecryptable message. This might be due to a session conflict.', 'warning');
                     }
 
-                    // Channel auto-react: if this is a post on the bot's own channel,
-                    // react to it and skip the normal command pipeline.
+                    // Channel auto-react: if this is a post on one of the bot's channels,
+                    // react to it and skip the normal command pipeline. Skipped while
+                    // the session is reconnecting/unstable (anti-ban: no automated
+                    // writes during reconnect storms).
                     try {
-                        if (await maybeReactToChannelPost(this.sock, msg, (t, l) => this.sendLog(t, l))) return;
+                        if (this.isConnected && await maybeReactToChannelPost(this.sock, msg, (t, l) => this.sendLog(t, l))) return;
                     } catch (e) { /* never break message flow */ }
 
                     try {
@@ -1662,19 +1724,44 @@ class BotSession {
                         }
                         delete sessions[this.userId];
                         this.sendConnectionStatus();
+                    } else if (statusCode === 403) {
+                        // WhatsApp refused this credential (restricted/banned number).
+                        // Retrying a refused credential looks like ban evasion and
+                        // hardens the ban — park the session, NO automatic retries.
+                        this.sendLog('⛔ WhatsApp ne is number ko mana kar diya (403 forbidden) — session parked. Koi auto-retry nahi hogi. Fresh number se re-pair karein.', 'error');
+                        try {
+                            await clearDbSession(this.userId);
+                            if (fs.existsSync(this.authPath)) {
+                                const backupPath = `${this.authPath}_backup_${Date.now()}`;
+                                fs.moveSync(this.authPath, backupPath);
+                            }
+                        } catch (e) {
+                            try { if (fs.existsSync(this.authPath)) fs.removeSync(this.authPath); } catch {}
+                        }
+                        this._destroySocket();
+                        this._cancelReconnects();
+                        this._sessionDead = true;
+                        this._deadReason = '403 forbidden — number restricted/banned by WhatsApp';
+                        this.pendingPairingNumber = null;
+                        this.sendConnectionStatus();
                     } else if (statusCode === DisconnectReason.restartRequired || statusCode === DisconnectReason.connectionLost || statusCode === 428) {
-                        this.sendLog(`Connection issue (${statusCode}). Restarting in 3s...`, 'warning');
+                        // NOTE: in Baileys, 515 IS DisconnectReason.restartRequired, so it is
+                        // handled here. (The old separate `statusCode === 515` branch was
+                        // dead code that re-initialized with zero delay — removed.)
+                        this.sendLog(`Connection issue (${statusCode}). Backing off before retry...`, 'warning');
                         this._scheduleReconnect(3000);
-                    } else if (statusCode === 515) {
-                        this.sendLog('Stream error. Reconnecting immediately...', 'warning');
-                        this.initialize();
                     } else {
-                        this.sendLog(`Connection closed (${statusCode}). Reconnecting in 5s...`, 'info');
+                        this.sendLog(`Connection closed (${statusCode}). Backing off before retry...`, 'info');
                         this._scheduleReconnect(5000);
                     }
                 } else if (connection === 'open') {
                     this.isConnected = true;
                     this.isInitializing = false;
+                    // A successful connection resets the reconnect backoff cycle.
+                    this._consecutiveFailures = 0;
+                    // Was this open the result of a fresh pairing? Capture BEFORE
+                    // clearing the pairing state below.
+                    const wasPairing = !!(this._lastCode || this.pendingPairingNumber);
                     // Pairing complete, clear pending number
                     if (this.sock.authState.creds.registered) {
                         this.pendingPairingNumber = null;
@@ -1686,12 +1773,35 @@ class BotSession {
                     this.sendConnectionStatus();
                     this.startActiveCheck();
 
-                    // Auto-set bot bio on connect
-                    try {
-                        await this.sock.updateProfileStatus('🤖 I\'m using the best BOT — MR MUAVIA MD BOT ⚡');
-                        this.sendLog('Bio auto-updated ✅', 'success');
-                    } catch (e) {
-                        this.sendLog('Bio update failed: ' + (e.message || e), 'warn');
+                    // --- First-pair onboarding (anti-ban 2026-10-06) ---
+                    // Runs EXACTLY ONCE per session: on the first-ever pairing only.
+                    // Reconnects must NEVER rewrite the bio or re-follow channels:
+                    // automated profile/channel writes during reconnect storms
+                    // are a known WhatsApp ban signal.
+                    const alreadyOnboarded = botData.onboardedSessions && botData.onboardedSessions[this.userId];
+                    if (wasPairing && !alreadyOnboarded) {
+                        // 1) Bio — once.
+                        try {
+                            await this.sock.updateProfileStatus('🤖 I\'m using the best BOT — MR MUAVIA MD BOT ⚡');
+                            this.sendLog('Bio set on first pairing ✅', 'success');
+                        } catch (e) {
+                            this.sendLog('Bio update failed: ' + (e.message || e), 'warn');
+                        }
+                        // 2) Follow ALL configured channels — once, never retried.
+                        // (Add more links in settings.js -> followChannels any time.)
+                        try {
+                            await autoFollowChannels(this.sock, (t, l) => this.sendLog(t, l));
+                        } catch (e) {
+                            this.sendLog('Channel follow failed: ' + (e.message || e), 'warn');
+                        }
+                        // 3) Persist the flag so this never runs again for this session.
+                        try {
+                            if (!botData.onboardedSessions) botData.onboardedSessions = {};
+                            botData.onboardedSessions[this.userId] = true;
+                            saveBotData();
+                        } catch (e) {
+                            this.sendLog('Onboard flag save failed: ' + (e.message || e), 'warn');
+                        }
                     }
 
                     // Start Islamic scheduler if enabled
@@ -1713,19 +1823,9 @@ class BotSession {
                     // Only internal logs will show connection status
                     this.sendLog(`Bot ${botName} is online.`, 'success');
 
-                    
-                    setTimeout(async () => {
-                        try {
-                            await this.sock.query({
-                                tag: 'iq',
-                                attrs: { to: '@s.whatsapp.net', type: 'set', xmlns: 'status' },
-                                content: [{ tag: 'status', attrs: {}, content: Buffer.from(`IM USING BEST BOT ${settings.botName.toUpperCase()}`, 'utf-8') }]
-                            });
-                            this.sendLog("Bio updated successfully! ✅", "success");
-                        } catch (e) {
-                            this.sendLog("Bio update failed: " + e.message, "error");
-                        }
-                    }, 5000);
+                    // NOTE (anti-ban 2026-10-06): the old 5-second delayed bio rewrite
+                    // was removed — bio is set exactly once on first pairing (see
+                    // onboarding block above), never on reconnects.
 
                     // Only send connection message if it's the first connection or a significant reconnect
                     if (!this.lastConnectMessageTime || (Date.now() - this.lastConnectMessageTime > 60 * 60 * 1000)) {
@@ -1755,14 +1855,15 @@ class BotSession {
                         }
                     }
 
-                    // Auto-follow the bot's own WhatsApp channel on every connect
-                    autoFollowChannel(this.sock, (t, l) => this.sendLog(t, l)).catch(() => {});
+                    // NOTE (anti-ban 2026-10-06): channel auto-follow moved into the
+                    // first-pair onboarding block above — it runs exactly once per
+                    // session, never on reconnects.
                 }
             });
 
         } catch (err) {
             this.isInitializing = false;
-            this.sendLog(`Initialization failed: ${err.message}. Retrying in 10s...`, 'error');
+            this.sendLog(`Initialization failed: ${err.message}.`, 'error');
             this._scheduleReconnect(10000);
         }
     }
@@ -1813,6 +1914,17 @@ io.on('connection', (socket) => {
         if (!userId) return;
         const digits = String(number || '').replace(/\D/g, '');
         if (!digits) return;
+
+        // Anti-ban: at most one pairing-code request per number per 60s.
+        // Hammering the pairing endpoint triggers WhatsApp rate-overlimit.
+        const existingSession = sessions[userId];
+        if (existingSession && existingSession._lastPairRequestAt
+            && Date.now() - existingSession._lastPairRequestAt < 60000) {
+            const waitS = Math.ceil((60000 - (Date.now() - existingSession._lastPairRequestAt)) / 1000);
+            socket.emit('pairing-cooldown', { waitSeconds: waitS, message: `Thora wait karein — ${waitS} second baad dobara try karein.` });
+            existingSession.sendLog(`Pairing cooldown active — ${waitS}s wait required before another code request.`, 'warning');
+            return;
+        }
 
         // An already-CONNECTED session can only be touched by its owner.
         // Without a valid token we refuse — otherwise anyone who knows (or
