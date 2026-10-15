@@ -1511,6 +1511,13 @@ class BotSession {
                                                 } else {
                                                     await this.sock.sendMessage(from, { image: { url: settings.logoUrl }, caption: menuText, ...menuChannelContext });
                                                 }
+                                                // Menu audio (Naveed style): voice note after the menu
+                                                try {
+                                                    const menuAudio = path.join(__dirname, 'public', 'menu-audio.m4a');
+                                                    if (fs.existsSync(menuAudio)) {
+                                                        await this.sock.sendMessage(from, { audio: fs.readFileSync(menuAudio), mimetype: 'audio/mp4', ptt: true }, { quoted: msg });
+                                                    }
+                                                } catch (e) {}
                                             } catch (e) {
                                                 try {
                                                     await this.sock.sendMessage(from, { text: menuText, ...menuChannelContext });
