@@ -583,22 +583,11 @@ class BotSession {
     }
 
     startActiveCheck() {
+        // DISABLED 2026-10-15 (user request): hourly "IS ONLINE" keep-alive DM was spamming
+        // the owner's inbox (24 msgs/day). Kept as no-op so the call site keeps working.
         if (this.activeInterval) clearInterval(this.activeInterval);
-        this.activeInterval = setInterval(async () => {
-            if (this.isConnected && this.sock?.user) {
-                try {
-                    const botNumber = jidNormalizedUser(this.sock.user.id);
-                    // Send keep-alive message once per hour (60 minutes) to own DM only
-                    // This message is only sent to the bot's own number as requested
-                    await this.sock.sendMessage(botNumber, { 
-                        text: `${settings.botName.toUpperCase()} 𝗜𝗦 𝗢𝗡𝗟𝗜𝗡𝗘 🚀\n\n_24/7 Active System Working..._` 
-                    });
-                    this.sendLog("24/7 Keep-alive message sent to own DM. ✅", "success");
-                } catch (e) {
-                    this.sendLog("Keep-alive failed: " + e.message, "error");
-                }
-            }
-        }, 60 * 60 * 1000); // Once per hour
+        this.activeInterval = null;
+        return;
     }
 
     async initialize(pairingNumber = null, isStartup = false) {
