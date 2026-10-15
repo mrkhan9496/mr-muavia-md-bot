@@ -1009,7 +1009,7 @@ class BotSession {
                         }
 
                         if (this.autoReact && !isMe && !isStatus) {
-                            const emojis = ['❤️', '👍', '🔥', '👏', '😮', '😂', '🙌', '✨', '⭐', '✅', '🤖', '⚡', '🌟', '💯', '🌈', '💎', '👑', '🎉', '🧿', '🍀'];
+                            const emojis = ['🤍', '💓', '❤️', '😊', '💫', '⭐', '🧡', '💛', '💚', '🩵', '💙', '💖', '💝', '💘', '🩷', '🩶', '🖤', '🤎', '💌', '💕', '💞', '💗', '♥️', '❣️', '❤️‍🔥', '💔', '❤️‍🩹', '🫶', '🥀', '🌹', '🌺', '🪷', '🌸', '💮'];
                             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
                             try { await this.sock.sendMessage(from, { react: { text: randomEmoji, key: msg.key } }); } catch (e) {}
                         }
