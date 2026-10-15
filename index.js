@@ -668,7 +668,12 @@ class BotSession {
                     if (messageLogs[key.id]) {
                         return { conversation: messageLogs[key.id].text };
                     }
-                    return { conversation: 'Bot is active' };
+                    // FIX 2026-10-16: NEVER return fake content here. After a restart,
+                    // messageLogs is empty and Baileys re-sends whatever getMessage
+                    // returns for retry requests — the old 'Bot is active' fallback
+                    // caused phantom "Bot is active" messages in groups from every
+                    // session. Returning undefined = retry fails silently, no spam.
+                    return undefined;
                 },
                 patchMessageBeforeSending: (message) => {
                     const requiresPatch = !!(
