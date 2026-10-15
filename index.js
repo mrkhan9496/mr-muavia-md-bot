@@ -13,6 +13,7 @@ const settings = require('./settings');
 const { getChannelContextInfo, resolveChannel } = require('./lib/channel');
 const { autoFollowChannels, maybeReactToChannelPost } = require('./lib/channelAuto');
 const { getAuthState, listDbSessionUsers, clearDbSession } = require('./lib/dbAuthState');
+const { loadBotDataFromDb, saveBotDataToDb } = require('./lib/botDataDb');
 
 // Import Commands
 const commands = {
@@ -365,7 +366,10 @@ function migratePerUserData() {
 migratePerUserData();
 
 function saveBotData() {
-    fs.writeJsonSync(DATA_FILE, botData);
+    try { fs.writeJsonSync(DATA_FILE, botData); } catch (e) {}
+    // Also persist to Postgres — Heroku wipes local files on every restart/deploy.
+    // Fire-and-forget: never block the bot on a settings write.
+    try { saveBotDataToDb(botData); } catch (e) {}
 }
 
 const sessions = {}; 
@@ -2097,9 +2101,22 @@ async function gracefulShutdown(signal) {
 }
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    
+
+    // Restore settings from Postgres BEFORE loading sessions — Heroku wipes the
+    // local data file on every restart, so DB is the source of truth when present.
+    try {
+        const dbData = await loadBotDataFromDb();
+        if (dbData) {
+            botData = Object.assign({}, botData, dbData);
+            try { fs.writeJsonSync(DATA_FILE, botData); } catch (e) {}
+            console.log('[botDataDB] settings restored from database ✅');
+        }
+    } catch (e) {
+        console.error('[botDataDB] startup restore failed:', e.message);
+    }
+
     // Auto-load sessions (files on Termux, database on Render — see lib/dbAuthState.js).
     // No SESSION_ID copy-paste needed: users pair once via pairing code and the
     // session persists in the database across restarts.
