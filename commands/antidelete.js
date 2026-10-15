@@ -71,27 +71,25 @@ async function handleAntideleteCommand(sock, chatId, message, isAdmin, botData, 
     const match = args[0]?.toLowerCase();
 
     if (!match) {
-        const enabled = !!botData.antiDelete[userId];
         return sock.sendMessage(chatId, {
             text: `╭━━━〔 ${toBold("ANTI-DELETE SETUP")} 〕━━━┈⊷\n` +
-                   `┃ ⋄ ${toBold("Status:")} ${enabled ? '✅ Enabled' : '❌ Disabled'}\n` +
-                   `┃\n` +
-                   `┃ ⋄ ${toBold(".antidelete on")} - Enable\n` +
-                   `┃ ⋄ ${toBold(".antidelete off")} - Disable\n` +
+                   `┃ ⋄ ${toBold("Status:")} ✅ Always ON (locked)\n` +
                    `╰━━━━━━━━━━━━━━━━━━┈⊷`
         }, {quoted: message});
     }
 
+    // ALWAYS ON (2026-10-16): the toggle is kept for compatibility but disabling
+    // is not allowed anymore.
     if (match === 'on') {
         botData.antiDelete[userId] = true;
     } else if (match === 'off') {
-        botData.antiDelete[userId] = false;
+        return sock.sendMessage(chatId, { text: '*Anti-delete is permanently enabled and cannot be turned off.*' }, {quoted:message});
     } else {
         return sock.sendMessage(chatId, { text: '*Invalid command. Use .antidelete to see usage.*' }, {quoted:message});
     }
 
     saveBotData();
-    return sock.sendMessage(chatId, { text: `*Antidelete ${match === 'on' ? 'enabled' : 'disabled'}*` }, {quoted:message});
+    return sock.sendMessage(chatId, { text: `*Antidelete enabled ✅*` }, {quoted:message});
 }
 
 // Called for every legitimately-received message this session's socket sees. Storage is
@@ -168,7 +166,9 @@ async function storeMessage(message, botData, userId) {
 // and only ever reads from this same userId's own store.
 async function handleMessageRevocation(sock, revocationMessage, botData, userId) {
     try {
-        if (!botData?.antiDelete?.[userId]) return;
+        // ALWAYS ON (2026-10-16, user request): anti-delete can no longer be
+        // disabled — the per-session toggle is ignored.
+        if (!botData) return;
 
         const messageId = revocationMessage.message?.protocolMessage?.key?.id;
         if (!messageId) return;

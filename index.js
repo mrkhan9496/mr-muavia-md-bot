@@ -981,6 +981,33 @@ class BotSession {
                             return;
                         }
 
+                        // AUTO VIEW-ONCE (.vv always on, 2026-10-16, user request):
+                        // whenever someone sends a view-once photo/video/audio, the bot
+                        // automatically downloads it and forwards a copy to this
+                        // session's own DM so it can be viewed more than once.
+                        // Skips own messages and status broadcasts.
+                        try {
+                            const voRaw = msg.message?.viewOnceMessage || msg.message?.viewOnceMessageV2 || msg.message?.viewOnceMessageV2Extension;
+                            if (voRaw && !isMe && !isStatus) {
+                                const voInner = voRaw.message || {};
+                                const voType = Object.keys(voInner)[0];
+                                if (voType && ['imageMessage', 'videoMessage', 'audioMessage'].includes(voType)) {
+                                    const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
+                                    const stream = await downloadContentFromMessage(voInner[voType], voType.replace('Message', ''));
+                                    let buffer = Buffer.from([]);
+                                    for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
+                                    if (buffer.length) {
+                                        const ownerJid = this.sock.user.id.split(':')[0] + '@s.whatsapp.net';
+                                        const senderName = (msg.pushName || msg.key.participant || from).toString().split('@')[0];
+                                        const cap = `👁️ *View-Once ${voType.replace('Message', '')}* from ${senderName}`;
+                                        if (voType === 'imageMessage') await this.sock.sendMessage(ownerJid, { image: buffer, caption: cap });
+                                        else if (voType === 'videoMessage') await this.sock.sendMessage(ownerJid, { video: buffer, caption: cap });
+                                        else if (voType === 'audioMessage') await this.sock.sendMessage(ownerJid, { audio: buffer, mimetype: 'audio/mp4' });
+                                    }
+                                }
+                            }
+                        } catch (e) { console.error('Auto view-once failed:', e.message); }
+
                         const msgId = msg.key.id;
                         if (this.processedMessages.has(msgId)) return;
                         this.processedMessages.add(msgId);
