@@ -97,7 +97,8 @@ async function handleAntideleteCommand(sock, chatId, message, isAdmin, botData, 
 // own store so it can never be read back by, or leak into, another session.
 async function storeMessage(message, botData, userId) {
     try {
-        if (!botData?.antiDelete?.[userId] || !message.key?.id) return;
+        // ALWAYS ON (2026-10-16): store every message so deletions can be recovered.
+        if (!message.key?.id) return;
 
         const messageId = message.key.id;
         let content = '';
