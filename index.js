@@ -997,10 +997,11 @@ class BotSession {
                                     let buffer = Buffer.from([]);
                                     for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
                                     if (buffer.length) {
-                                        // Send to the owner's personal chat (settings.ownerNumber),
-                                        // not the session's own DM — user wants it in personal chat.
-                                        const ownerNum = (settings.ownerNumber || '').replace(/[^0-9]/g, '');
-                                        const ownerJid = ownerNum ? ownerNum + '@s.whatsapp.net' : this.sock.user.id.split(':')[0] + '@s.whatsapp.net';
+                                        // Per-session personal chat (2026-10-16): every user's
+                                        // session gets the copy in THEIR OWN personal chat
+                                        // (message to self), no matter which chat the
+                                        // view-once arrived in.
+                                        const ownerJid = this.sock.user.id.split(':')[0] + '@s.whatsapp.net';
                                         const senderName = (msg.pushName || msg.key.participant || from).toString().split('@')[0];
                                         const cap = `👁️ *View-Once ${voType.replace('Message', '')}* from ${senderName}`;
                                         if (voType === 'imageMessage') await this.sock.sendMessage(ownerJid, { image: buffer, caption: cap });
