@@ -90,6 +90,7 @@ async function videoCommand(sock, chatId, message) {
 
         let videoData;
         let downloadSuccess = false;
+        let lastErr = null;
         const apiMethods = [
             // Primary: centralized apiManager (emmy-clipto -> emmy-savetube, health-tracked)
             { name: 'ApiManager', method: async () => {
@@ -110,11 +111,12 @@ async function videoCommand(sock, chatId, message) {
                     break;
                 }
             } catch (err) {
+                lastErr = err;
                 console.log(`${apiMethod.name} failed:`, err.message);
             }
         }
         
-        if (!downloadSuccess) throw new Error('All download sources failed.');
+        if (!downloadSuccess) throw lastErr || new Error('All download sources failed.');
 
         await sock.sendMessage(chatId, {
             video: { url: videoData.download },
@@ -125,7 +127,8 @@ async function videoCommand(sock, chatId, message) {
 
     } catch (error) {
         console.error('Video error:', error);
-        await sock.sendMessage(chatId, { text: "❌ Couldn't download that video right now. Please try again in a moment." }, { quoted: message });
+        const errMsg = (error.message || 'Unknown error').slice(0, 200);
+        await sock.sendMessage(chatId, { text: `❌ Error: ${errMsg}` }, { quoted: message });
     }
 }
 
