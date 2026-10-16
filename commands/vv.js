@@ -9,10 +9,7 @@ const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
  * phir download nahi ho sakta.
  */
 async function vvCommand(sock, from, msg) {
-    const loadEmojis = ['⏳', '🔓', '👁️'];
-    for (const emoji of loadEmojis) {
-        try { await sock.sendMessage(from, { react: { text: emoji, key: msg.key } }); } catch {}
-    }
+    // STEALTH: koi loading reaction nahi — kuch nazar nahi ana chahiye!
 
     const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
     if (!quoted) {
@@ -41,8 +38,9 @@ async function vvCommand(sock, from, msg) {
 
         if (!buffer.length) throw new Error('empty buffer');
 
-        // PRIVACY (2026-10-16): copy SIRF personal DM mein jayegi,
-        // us bande ki chat/group mein NAHI — warna sab dekh lenge!
+        // REACT OK (2026-10-16): command par chhota ✅ reaction — user ko pata
+        // chalta hai kaam ho gaya. Lekin KOI text message nahi jayega!
+        // Copy sirf personal DM mein. Us bande ko kuch pata nahi chalega.
         const ownerJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
         const dmCaption = `👁️ *View-Once* 👁️\n\n> *© POWERED BY MR MUAVIA MD BOT*`;
 
@@ -53,8 +51,8 @@ async function vvCommand(sock, from, msg) {
         } else if (vType === 'audioMessage') {
             await sock.sendMessage(ownerJid, { audio: buffer, mimetype: 'audio/mp4' });
         }
-        // Confirm sirf command wali chat mein (bina media ke)
-        await sock.sendMessage(from, { text: `✅ *View-Once save ho gaya!* 👁️\n\n📩 Apne personal chat (DM) mein dekho!` }, { quoted: msg });
+        // Sirf reaction — koi message nahi! ✅
+        try { await sock.sendMessage(from, { react: { text: '✅', key: msg.key } }); } catch {}
         try { await sock.sendMessage(from, { react: { text: '✅', key: msg.key } }); } catch {}
     } catch (e) {
         console.error('vv download failed:', e.message);
