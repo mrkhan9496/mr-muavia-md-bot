@@ -46,6 +46,21 @@ async function getYupraDownloadByUrl(youtubeUrl) {
     throw new Error('Yupra returned no download');
 }
 
+// Direct Emmy savetube MP3 (2026-10-16, tested working) — bypasses apiManager
+// health tracking in case the service was temporarily marked down.
+async function getEmmySavetubeMp3Direct(youtubeUrl) {
+    const EMMY = process.env.EMMY_API_BASE || 'https://apis.emmyhenztech.xyz';
+    const res = await tryRequest(() => axios.get(`${EMMY}/api/savetube`, {
+        params: { url: youtubeUrl, format: 'mp3' },
+        ...AXIOS_DEFAULTS,
+    }));
+    const r = res?.data?.result;
+    if (res?.data?.status && r?.download_url) {
+        return { download: r.download_url, title: r.title };
+    }
+    throw new Error('Emmy direct MP3 failed');
+}
+
 async function getOkatsuDownloadByUrl(youtubeUrl) {
     const apiUrl = `https://okatsu-rolezapiiz.vercel.app/downloader/ytmp3?url=${encodeURIComponent(youtubeUrl)}`;
     const res = await tryRequest(() => axios.get(apiUrl, AXIOS_DEFAULTS));
@@ -109,6 +124,7 @@ async function songCommand(sock, chatId, message) {
             }},
             { name: 'Yupra', method: () => getYupraDownloadByUrl(video.url) },
             { name: 'Okatsu', method: () => getOkatsuDownloadByUrl(video.url) },
+            { name: 'EmmyDirect', method: () => getEmmySavetubeMp3Direct(video.url) },
         ];
         
         for (const apiMethod of apiMethods) {
