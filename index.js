@@ -10,7 +10,7 @@ const { default: makeWASocket, DisconnectReason, fetchLatestBaileysVersion, make
 const P = require('pino');
 const { OpenAI } = require('openai');
 const settings = require('./settings');
-const { getChannelContextInfo, resolveChannel } = require('./lib/channel');
+const { getChannelContextInfo, resolveChannel, getMetaAIContextInfo } = require('./lib/channel');
 const { autoFollowChannels, maybeReactToChannelPost } = require('./lib/channelAuto');
 const automationGuard = require('./lib/automationGuard');
 const viewOnceStore = require('./lib/viewOnceStore');
@@ -1596,6 +1596,14 @@ class BotSession {
                                             let menuChannelContext = {};
                                             try {
                                                 menuChannelContext = await getChannelContextInfo(this.sock);
+                                            } catch (e) {}
+                                            // Meta AI display (2026-10-17) — merge AI bot info into menu context
+                                            try {
+                                                const aiCtx = getMetaAIContextInfo();
+                                                if (menuChannelContext.contextInfo) {
+                                                    menuChannelContext.contextInfo.forwardedAiBotMessageInfo = aiCtx.forwardedAiBotMessageInfo;
+                                                    menuChannelContext.contextInfo.forwardOrigin = aiCtx.forwardOrigin;
+                                                }
                                             } catch (e) {}
                                             // Menu image: prefer the local logo file (public/logo.jpg) so it never
                                             // depends on an external image host; fall back to the remote logo URL.
