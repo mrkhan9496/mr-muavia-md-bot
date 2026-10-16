@@ -64,6 +64,7 @@ const commands = {
     joke: require('./commands/joke'),
     meme: require('./commands/meme'),
     groupinfo: require('./commands/groupinfo'),
+    gs: require('./commands/gs'),
     gdrive: require('./commands/gdrive'),
     mf: require('./commands/mf'),
     translate: require('./commands/translate').handleTranslateCommand,
@@ -1665,6 +1666,7 @@ class BotSession {
                                         case 'vv': await commands.vv(this.sock, from, msg); break;
                                         case 'dp': await commands.dp(this.sock, from, msg); break;
                                         case 'groupinfo': await commands.groupinfo(this.sock, from, msg); break;
+                                        case 'gs': case 'groupstatus': await commands.gs(this.sock, from, msg, botData, this.userId); break;
                                         case 'kickoffline': await commands.kickoffline(this.sock, from, msg, isAdmin, botData, saveBotData, args); break;
                                         case 'antistatus': await commands.antistatus(this.sock, from, msg, isAdmin, botData, saveBotData, args, this.userId); break;
                                         case 'gdrive': await commands.gdrive(this.sock, from, msg, q); break;
