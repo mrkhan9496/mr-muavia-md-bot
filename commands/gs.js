@@ -1,55 +1,63 @@
 /**
  * .gs — Group Status (2026-10-16)
- * Group ki info + is group mein bot ki settings ek saath.
- * Public command (koi bhi use kar sakta hai).
+ * Group par status lagao — jaise profile par status lagta hai!
+ *
+ * .gs <text>  — Group status set karo (admin/owner)
+ * .gs          — Group ka status dekho (sab ke liye)
+ * .gs clear    — Status hatao (admin/owner)
  */
-async function gsCommand(sock, chatId, msg, botData, userId) {
+async function gsCommand(sock, chatId, msg, botData, saveBotData, userId, args, isAdmin, isOwner) {
     if (!chatId.endsWith('@g.us')) {
         await sock.sendMessage(chatId, { text: '❌ Ye command sirf group mein kaam karti hai!' }, { quoted: msg });
         return;
     }
-    try {
-        const meta = await sock.groupMetadata(chatId);
-        const participants = meta.participants || [];
-        const admins = participants.filter(p => p.admin);
-        const owner = meta.owner || meta.subjectOwner || (participants.find(p => p.admin === 'superadmin')?.id) || null;
+    if (!botData.groupStatus) botData.groupStatus = {};
+    if (!botData.groupStatus[userId]) botData.groupStatus[userId] = {};
 
-        // Is group mein bot ki settings
-        const uid = userId;
-        const on = (v) => v ? '✅ ON' : '❌ OFF';
-        const antilink = botData.antilinkGroups?.[uid]?.[chatId];
-        const antistatus = botData.antiStatusGroups?.[uid]?.[chatId];
-        const welcome = botData.welcome?.[uid]?.[chatId];
-        const goodbye = botData.goodbye?.[uid]?.[chatId];
-        const inactive = botData.inactiveGroups?.[uid]?.[chatId];
+    const text = (args || []).join(' ').trim();
 
-        let pp;
-        try { pp = await sock.profilePictureUrl(chatId, 'image'); } catch { pp = null; }
-
-        const text =
-            `📊 *GROUP STATUS*\n\n` +
-            `📛 *Name:* ${meta.subject}\n` +
-            `👥 *Members:* ${participants.length}\n` +
-            `🛡️ *Admins:* ${admins.length}\n` +
-            `👑 *Owner:* ${owner ? '@' + owner.split('@')[0] : 'N/A'}\n` +
-            `📝 *Desc:* ${(meta.desc || 'Koi description nahi').toString().slice(0, 80)}\n\n` +
-            `🤖 *BOT SETTINGS (is group):*\n` +
-            `🔗 Antilink: ${antilink ? `✅ ON (${antilink})` : '❌ OFF'}\n` +
-            `📵 Antistatus: ${on(antistatus)}\n` +
-            `👋 Welcome: ${on(welcome)}\n` +
-            `👋 Goodbye: ${on(goodbye)}\n` +
-            `💤 Bot active: ${on(!inactive)}\n\n` +
-            `> *© POWERED BY MR MUAVIA MD BOT*`;
-
-        const mentions = owner ? [owner] : [];
-        if (pp) {
-            await sock.sendMessage(chatId, { image: { url: pp }, caption: text, mentions }, { quoted: msg });
-        } else {
-            await sock.sendMessage(chatId, { text, mentions }, { quoted: msg });
+    // --- Set / clear (admin/owner only) ---
+    if (text) {
+        if (!isAdmin && !isOwner) {
+            await sock.sendMessage(chatId, { text: '❌ Group status sirf admin laga sakta hai!' }, { quoted: msg });
+            return;
         }
-    } catch (e) {
-        await sock.sendMessage(chatId, { text: `❌ Group status nahi mil saka: ${e.message || 'error'}` }, { quoted: msg });
+        if (text.toLowerCase() === 'clear' || text.toLowerCase() === 'delete' || text.toLowerCase() === 'hatao') {
+            delete botData.groupStatus[userId][chatId];
+            if (saveBotData) saveBotData();
+            await sock.sendMessage(chatId, { text: '🗑️ *Group status hata diya gaya!*' }, { quoted: msg });
+            return;
+        }
+        if (text.length > 300) {
+            await sock.sendMessage(chatId, { text: '❌ Status 300 characters se zyada nahi ho sakta!' }, { quoted: msg });
+            return;
+        }
+        const sender = msg.key.participant || chatId;
+        botData.groupStatus[userId][chatId] = {
+            text,
+            setBy: sender.split('@')[0],
+            setAt: Date.now(),
+        };
+        if (saveBotData) saveBotData();
+        await sock.sendMessage(chatId, {
+            text: `✅ *Group status set ho gaya!*\n\n📌 ${text}\n\n> *© POWERED BY MR MUAVIA MD BOT*`
+        }, { quoted: msg });
+        return;
     }
+
+    // --- View (sab ke liye) ---
+    const st = botData.groupStatus[userId][chatId];
+    if (!st) {
+        await sock.sendMessage(chatId, {
+            text: `📌 *Group Status:*\n\n_Koi status set nahi hai._\n\nSet karne ke liye (admin):\n.gs <apna status text>`
+        }, { quoted: msg });
+        return;
+    }
+    const date = new Date(st.setAt).toLocaleString('en-PK', { timeZone: 'Asia/Karachi' });
+    await sock.sendMessage(chatId, {
+        text: `📌 *GROUP STATUS*\n\n${st.text}\n\n👤 Set by: @${st.setBy}\n🕐 ${date}\n\n> *© POWERED BY MR MUAVIA MD BOT*`,
+        mentions: [st.setBy + '@s.whatsapp.net'],
+    }, { quoted: msg });
 }
 
 module.exports = gsCommand;
