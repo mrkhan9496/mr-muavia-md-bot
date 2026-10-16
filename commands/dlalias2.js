@@ -42,6 +42,7 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 
 const TRIGGERS = [
     'twitter',
+    'th', 'pin',
     'download', 'gitclone', 'surah',
     'waifu', 'neko', 'megumin',
     'animegirl', 'animegirl1', 'animegirl2', 'animegirl3', 'animegirl4', 'animegirl5',
@@ -124,6 +125,68 @@ async function handleTwitter(sock, from, msg, q) {
         console.error('[dl2] twitter failed:', e.message);
         await react(sock, from, msg, '❌');
         await sock.sendMessage(from, { text: '❌ Twitter video download nahi ho saka. Link private/invalid ho sakta hai ya service temporarily down hai.' }, { quoted: msg });
+    }
+}
+
+// ---------------------------------------------------------------------------
+// threads — Threads video/image via cobalt (2026-10-17)
+// ---------------------------------------------------------------------------
+const THREADS_URL = /https?:\/\/(?:www\.)?threads\.(?:com|net)\//i;
+
+async function handleThreads(sock, from, msg, q) {
+    const url = (q || '').trim();
+    if (!url) {
+        return await sock.sendMessage(from, { text: '❌ Threads ka link dein.\nExample: .th https://www.threads.com/@user/post/123...' }, { quoted: msg });
+    }
+    if (!THREADS_URL.test(url)) {
+        return await sock.sendMessage(from, { text: '❌ Ye valid Threads link nahi lagta.' }, { quoted: msg });
+    }
+    await react(sock, from, msg, '⌛');
+    try {
+        const media = await cobaltFetch(url);
+        const item = media.find(m => m.type === 'video') || media[0];
+        if (!item || !item.url) throw new Error('cobalt: no media in response');
+        if (item.type === 'video') {
+            await sendVideoSmart(sock, from, msg, item.url, `✅ THREADS DOWNLOADED\n${BRAND}`);
+        } else {
+            await sendImageSmart(sock, from, msg, item.url, `✅ THREADS DOWNLOADED\n${BRAND}`);
+        }
+        await react(sock, from, msg, '✅');
+    } catch (e) {
+        console.error('[dl2] threads failed:', e.message);
+        await react(sock, from, msg, '❌');
+        await sock.sendMessage(from, { text: '❌ Threads download nahi ho saka. Link private/invalid ho sakta hai ya service temporarily down hai.' }, { quoted: msg });
+    }
+}
+
+// ---------------------------------------------------------------------------
+// pinterest — Pinterest video/image via cobalt (2026-10-17)
+// ---------------------------------------------------------------------------
+const PINTEREST_URL = /https?:\/\/(?:www\.)?(?:pinterest|pin)\.(?:com|it|co\.uk|ca|de|fr|es)\//i;
+
+async function handlePinterest(sock, from, msg, q) {
+    const url = (q || '').trim();
+    if (!url) {
+        return await sock.sendMessage(from, { text: '❌ Pinterest ka link dein.\nExample: .pin https://www.pinterest.com/pin/123...' }, { quoted: msg });
+    }
+    if (!PINTEREST_URL.test(url)) {
+        return await sock.sendMessage(from, { text: '❌ Ye valid Pinterest link nahi lagta.' }, { quoted: msg });
+    }
+    await react(sock, from, msg, '⌛');
+    try {
+        const media = await cobaltFetch(url);
+        const item = media.find(m => m.type === 'video') || media[0];
+        if (!item || !item.url) throw new Error('cobalt: no media in response');
+        if (item.type === 'video') {
+            await sendVideoSmart(sock, from, msg, item.url, `✅ PINTEREST DOWNLOADED\n${BRAND}`);
+        } else {
+            await sendImageSmart(sock, from, msg, item.url, `✅ PINTEREST DOWNLOADED\n${BRAND}`);
+        }
+        await react(sock, from, msg, '✅');
+    } catch (e) {
+        console.error('[dl2] pinterest failed:', e.message);
+        await react(sock, from, msg, '❌');
+        await sock.sendMessage(from, { text: '❌ Pinterest download nahi ho saka. Link private/invalid ho sakta hai ya service temporarily down hai.' }, { quoted: msg });
     }
 }
 
@@ -373,6 +436,8 @@ async function dlAlias2Command(sock, chatId, msg, q, trigger) {
     try {
         switch (t) {
             case 'twitter': return await handleTwitter(sock, chatId, msg, q);
+            case 'th': return await handleThreads(sock, chatId, msg, q);
+            case 'pin': return await handlePinterest(sock, chatId, msg, q);
             case 'fb': return await handleFb(sock, chatId, msg, q);
             case 'igdl':
             case 'igdl2':

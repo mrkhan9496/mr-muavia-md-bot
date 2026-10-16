@@ -8,7 +8,7 @@ async function tiktokCommand(sock, from, msg, q) {
     const query = (q || '').trim();
 
     if (!query) {
-        return await sock.sendMessage(from, { text: '❌ Please provide a TikTok URL.\nExample: .tiktok https://vt.tiktok.com/...' }, { quoted: msg });
+        return await sock.sendMessage(from, { text: '❌ Please provide a TikTok URL.\nExample: .tt https://vt.tiktok.com/...' }, { quoted: msg });
     }
     if (!TIKTOK_URL_PATTERN.test(query)) {
         return await sock.sendMessage(from, { text: "❌ That doesn't look like a valid TikTok link." }, { quoted: msg });

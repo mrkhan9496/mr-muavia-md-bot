@@ -1270,6 +1270,15 @@ class BotSession {
                                             ]);
 
                                             jSec('DOWNLOAD', [
+                                                'tt',
+                                                'ig',
+                                                'fb',
+                                                'yt',
+                                                'tw',
+                                                'th',
+                                                'pin',
+                                                'song',
+                                                'mp3',
                                                 'tiktok',
                                                 'tiktok2',
                                                 'tiktok3',
@@ -1278,14 +1287,13 @@ class BotSession {
                                                 'igdl2',
                                                 'igdl3',
                                                 'facebook',
-                                                'song',
                                                 'video',
+                                                'twitter',
+                                                'download',
                                                 'apk',
                                                 'gdrive',
                                                 'mf',
                                                 'movie',
-                                                'twitter',
-                                                'download',
                                                 'gitclone',
                                                 'surah',
                                             ]);
@@ -1581,6 +1589,14 @@ class BotSession {
                                                 `*├✦ Version:* 2.0.0\n` +
                                                 `*╰───────────────────⊷*\n\n` +
                                                 menuSections.join('\n') + '\n\n' +
+                                                `*📥 DOWNLOADER SHORTCUTS:*\n` +
+                                                `• .tt — TikTok Downloader\n` +
+                                                `• .ig — Instagram Downloader\n` +
+                                                `• .fb — Facebook Downloader\n` +
+                                                `• .yt — YouTube Downloader\n` +
+                                                `• .tw — Twitter/X Downloader\n` +
+                                                `• .th — Threads Downloader\n` +
+                                                `• .pin — Pinterest Downloader\n\n` +
                                                 `> *© ᴘᴏᴡᴇʀᴇᴅ ʙʏ MR MUAVIA MD BOT*`;
                                             // Resolve the real channel JID from the invite link (never guessed) so the
                                             // "View channel" context can be attached. If it can't be resolved for any
@@ -1659,9 +1675,9 @@ class BotSession {
                                         case 'tagall': await commands.tagall(this.sock, from, msg, isAdmin, q); break;
                                         case 'setname': await commands.setname(this.sock, from, msg, isAdmin, botData, saveBotData, this.userId, q); break;
                                         case 'insta': case 'ig': await commands.insta(this.sock, from, msg, q); break;
-                                        case 'tiktok': await commands.tiktok(this.sock, from, msg, q); break;
+                                        case 'tiktok': case 'tt': await commands.tiktok(this.sock, from, msg, q); break;
                                         case 'song': await commands.song(this.sock, from, msg); break;
-                                        case 'video': await commands.video(this.sock, from, msg); break;
+                                        case 'video': case 'yt': await commands.video(this.sock, from, msg); break;
                                         case 'joke': await commands.joke(this.sock, from, msg); break;
                                         case 'meme': await commands.meme(this.sock, from, msg); break;
                                         case 'movie': case 'film': await commands.movie(this.sock, from, msg, q); break;
@@ -1783,7 +1799,7 @@ class BotSession {
                                         // JAWAD-MD parity batch (2026-10-03) — new command modules
                                         case 'ai21': case 'alpaca': case 'apex': case 'assistant': case 'bloom': case 'bloomz': case 'brain': case 'chatgpt35': case 'chatgpt4': case 'chatgpt4o': case 'chatgpt4turbo': case 'chatgptelite': case 'chatgptplus': case 'claude': case 'claude1': case 'claude2': case 'claude3': case 'claude35': case 'claude35haiku': case 'claude35sonnet': case 'claude37': case 'claude37sonnet': case 'claude3haiku': case 'claude3opus': case 'claude3sonnet': case 'claude4': case 'claude4opus': case 'claude4sonnet': case 'claudehaiku': case 'claudeinstant': case 'claudeopus': case 'claudesonnet': case 'codegen': case 'codet5': case 'codex': case 'command': case 'deepseekchat': case 'deepseekcoder': case 'deepseekcoder2': case 'deepseekllm': case 'deepseekmath': case 'deepseekr1': case 'deepseekv2': case 'deepseekv3': case 'deepseekvl': case 'dolly': case 'elite': case 'elitecopilot': case 'elitegpt': case 'falcon': case 'flant5': case 'gemini15': case 'gemini15flash': case 'gemini15pro': case 'gemini20': case 'gemini20flash': case 'gemini25': case 'gemini25flash': case 'gemini25pro': case 'gemininano': case 'geminipro': case 'geminiultra': case 'gpt3': case 'gpt35turbo': case 'gpt4': case 'gpt4all': case 'gpt4o': case 'gpt4omini': case 'gpt4turbo': case 'gpt4vision': case 'gpt5mini': case 'gptj': case 'gptneo': case 'grammar': case 'grok': case 'grok1': case 'grok15': case 'grok2': case 'grok2mini': case 'grok3': case 'grok3mini': case 'grok4': case 'grokbeta': case 'grokvision': case 'hugging': case 'jurassic': case 'kimi': case 'llama2': case 'llama3': case 'lumin': case 'mathgpt': case 'maxai': case 'mistral': case 'mixtral': case 'mscopilot': case 'neo': case 'nova': case 'o1': case 'o1mini': case 'o1preview': case 'o3': case 'o3mini': case 'o4': case 'omega': case 'openassist': case 'orca': case 'palm': case 'palm2': case 'phi2': case 'proai': case 'pulse': case 'quantum': case 'qwen': case 'qwen15': case 'qwen2': case 'qwen25': case 'qwen3': case 'qwencoder': case 'qwenmath': case 'qwenmax': case 'qwenplus': case 'qwenturbo': case 'qwenvl': case 'redpajama': case 'smart': case 'solar': case 'starcoder': case 'starlin': case 'talkai': case 'ultra': case 'vertex': case 'vicuna': case 'wizard': case 'yi': case 'yi34b': case 'zenith': await commands.aialias2(this.sock, from, msg, q, commandName); break;
                                         case 'angry': case 'baka': case 'bleh': case 'blowkiss': case 'cake': case 'carry': case 'celebrate': case 'clap': case 'coin': case 'confused': case 'cool': case 'cosplay': case 'emoji': case 'facepalm': case 'feed': case 'handshake': case 'headbang': case 'horoscope': case 'img': case 'kabedon': case 'laugh': case 'lurk': case 'no': case 'nod': case 'nope': case 'nosebleed': case 'nuzzle': case 'nya': case 'peck': case 'pout': case 'punch': case 'rizz': case 'run': case 'sad': case 'scared': case 'shake': case 'shocked': case 'shoot': case 'shrug': case 'shy': case 'sigh': case 'sigma': case 'simp': case 'sip': case 'sleep': case 'spin': case 'stare': case 'stop': case 'surprised': case 'tableflip': case 'taroun': case 'teehee': case 'think': case 'thumbsup': case 'tickle': case 'tired': case 'vibe': case 'yawn': case 'yay': case 'yes': case 'alchemist': case 'alieninvasion': case 'astral': case 'atlantis': case 'cd': case 'centaur': case 'chumi': case 'clock': case 'conjurer': case 'cyborg': case 'diviner': case 'dragonfire': case 'earthquake': case 'enchanter': case 'fairy': case 'fing': case 'gladiator': case 'griffin': case 'guru': case 'heart': case 'hurricane': case 'illusionist': case 'knight': case 'loading': case 'mayan': case 'medium': case 'mermaid': case 'monk': case 'moon': case 'mystic': case 'necromancer': case 'nikal': case 'ninja': case 'olympus': case 'oracle': case 'pegasus': case 'pharaoh': case 'phoenix': case 'pirate': case 'prophet': case 'rocket': case 'sage': case 'samurai': case 'seer': case 'shaman': case 'sorcerer': case 'spartan': case 'spinner': case 'telepath': case 'tornado': case 'tsunami': case 'type': case 'valhalla': case 'vampire': case 'viking': case 'volcano': case 'werewolf': case 'witchspell': case 'wizardmagic': case 'wthr': case 'yogi': case 'zombie': await commands.funtext2(this.sock, from, msg, commandName); break;
-                                        case 'twitter': case 'download': case 'gitclone': case 'surah': case 'waifu': case 'neko': case 'megumin': case 'animegirl': case 'animegirl1': case 'animegirl2': case 'animegirl3': case 'animegirl4': case 'animegirl5': await commands.dlalias2(this.sock, from, msg, q, commandName); break;
+                                        case 'twitter': case 'tw': case 'th': case 'pin': case 'download': case 'gitclone': case 'surah': case 'waifu': case 'neko': case 'megumin': case 'animegirl': case 'animegirl1': case 'animegirl2': case 'animegirl3': case 'animegirl4': case 'animegirl5': await commands.dlalias2(this.sock, from, msg, q, commandName); break;
                                         case 'del': case 'everyone': case 'gcinfo': case 'yts': case 'npm': case 'id': case 'getlid': case 'getbio': case 'getprivacy': case 'privacy': case 'blocklist': case 'sudo': case 'delsudo': case 'listsudo': case 'recording': case 'autotyping': case 'online': case 'autoreact': case 'mode': case 'botname': case 'ownername': case 'description': case 'stickername': case 'welcome': case 'setwelcome': case 'goodbye': case 'setgoodbye': case 'botdp': case 'fullpp': case 'updatebio': case 'follow': case 'follow2': case 'unfollow': case 'unfollow2': case 'forward': case 'convert': await commands.misc2(this.sock, from, msg, q, commandName, {isOwner, isAdmin, botData, saveBotData, userId: this.userId}); break;
                                         case 'font': case 'font1': case 'font2': case 'font3': case 'font4': case 'font5': case 'font6': case 'font7': case 'font8': case 'font9': case 'font10': case 'font11': case 'font12': case 'font13': case 'font14': case 'font15': case 'font16': case 'font17': case 'font18': case 'font19': case 'font20': case 'font21': case 'font22': case 'font23': await commands.fonts2(this.sock, from, msg, q, commandName); break;
                                     }

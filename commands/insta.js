@@ -22,7 +22,7 @@ async function instaCommand(sock, from, msg, q) {
     const query = (q || '').trim();
 
     if (!query) {
-        return await sock.sendMessage(from, { text: '❌ Please provide an Instagram URL.\nExample: .insta https://www.instagram.com/reel/...' }, { quoted: msg });
+        return await sock.sendMessage(from, { text: '❌ Please provide an Instagram URL.\nExample: .ig https://www.instagram.com/reel/...' }, { quoted: msg });
     }
     if (!INSTAGRAM_URL_PATTERN.test(query)) {
         return await sock.sendMessage(from, { text: "❌ That doesn't look like a valid Instagram link." }, { quoted: msg });
