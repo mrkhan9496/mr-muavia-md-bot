@@ -1038,9 +1038,19 @@ class BotSession {
                         }
 
                         if (this.autoReact && !isMe && !isStatus) {
+                            // ANTI-LOOP (2026-10-16): never react to reaction messages —
+                            // multiple bot sessions in one group would otherwise react to
+                            // each other's reactions forever, flooding the chat with
+                            // empty bubbles (reaction-on-reaction renders as blank).
+                            const _m = msg.message || {};
+                            const _inner = _m.ephemeralMessage?.message || _m.viewOnceMessage?.message || _m.viewOnceMessageV2?.message || _m;
+                            const incomingType = Object.keys(_inner)[0] || '';
+                            if (incomingType === 'reactionMessage') { /* skip */ }
+                            else {
                             const emojis = ['🤍', '💓', '❤️', '😊', '💫', '⭐', '🧡', '💛', '💚', '🩵', '💙', '💖', '💝', '💘', '🩷', '🩶', '🖤', '🤎', '💌', '💕', '💞', '💗', '♥️', '❣️', '❤️‍🔥', '💔', '❤️‍🩹', '🫶', '🥀', '🌹', '🌺', '🪷', '🌸', '💮'];
                             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
                             try { await this.sock.sendMessage(from, { react: { text: randomEmoji, key: msg.key } }); } catch (e) {}
+                            }
                         }
 
                         // AI Auto-Reply
