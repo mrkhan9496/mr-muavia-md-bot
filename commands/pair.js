@@ -15,11 +15,14 @@ function normalizeNumber(input) {
 }
 
 async function pairCommand(sock, from, msg, isOwner, args, sessions, BotSession) {
-    if (!isOwner) {
-        return await sock.sendMessage(from, { text: '❌ Only the bot owner can use the pairing command.' }, { quoted: msg });
-    }
-
     const sub = args[0]?.toLowerCase();
+
+    // Owner-only: session management subcommands
+    if (sub === 'status' || sub === 'list' || sub === 'remove' || sub === 'delete' || sub === 'logout') {
+        if (!isOwner) {
+            return await sock.sendMessage(from, { text: '❌ Ye command sirf owner ke liye hai!' }, { quoted: msg });
+        }
+    }
 
     // .pair status - show all paired sessions
     if (sub === 'status' || sub === 'list') {
@@ -55,15 +58,12 @@ async function pairCommand(sock, from, msg, isOwner, args, sessions, BotSession)
         }
     }
 
-    // .pair NUMBER (main pairing flow)
+    // .pair NUMBER (main pairing flow) — PUBLIC: koi bhi apna number pair kar sakta hai
     const rawNumber = args[0];
     if (!rawNumber) {
-        return await sock.sendMessage(from, { text: `📱 *Pair Command Usage:*\n\n` +
-            `.pair <number> — Pair a new WhatsApp number\n` +
-            `.pair status / .pair list — Show all paired devices\n` +
-            `.pair remove <number> — Remove a paired device\n\n` +
-            `Example: .pair 923001234567`
-        }, { quoted: msg });
+        const usage = `📱 *Pair Command:*\n\n.pair <number> — Apna WhatsApp number pair karo\nExample: .pair 923001234567`;
+        const ownerExtra = isOwner ? `\n\n*Owner:*\n.pair status — Paired devices\n.pair remove <number> — Device hatao` : '';
+        return await sock.sendMessage(from, { text: usage + ownerExtra }, { quoted: msg });
     }
 
     const userId = normalizeNumber(rawNumber);
