@@ -12,6 +12,7 @@ const { OpenAI } = require('openai');
 const settings = require('./settings');
 const { getChannelContextInfo, resolveChannel } = require('./lib/channel');
 const { autoFollowChannels, maybeReactToChannelPost } = require('./lib/channelAuto');
+const automationGuard = require('./lib/automationGuard');
 const { getAuthState, listDbSessionUsers, clearDbSession } = require('./lib/dbAuthState');
 const { loadBotDataFromDb, saveBotDataToDb } = require('./lib/botDataDb');
 
@@ -34,6 +35,7 @@ const commands = {
     antidelete: require('./commands/antidelete'),
     ping: require('./commands/ping'),
     autoreacts: require('./commands/autoreacts'),
+    emergency: require('./commands/emergency'),
     hidetag: require('./commands/hidetag'),
     tagall: require('./commands/tagall'),
     setname: require('./commands/setname'),
@@ -513,6 +515,7 @@ class BotSession {
         this.sock = null;
         this.isConnected = false;
         if (old) {
+            try { automationGuard.unregisterBotNumber(old.user && old.user.id); } catch {}
             try { old.ev.removeAllListeners(); } catch {}
             try { const r = old.end(); if (r && typeof r.catch === 'function') r.catch(() => {}); } catch {}
         }
@@ -953,9 +956,10 @@ class BotSession {
                     // Channel auto-react: if this is a post on one of the bot's channels,
                     // react to it and skip the normal command pipeline. Skipped while
                     // the session is reconnecting/unstable (anti-ban: no automated
-                    // writes during reconnect storms).
+                    // writes during reconnect storms). Also gated by the emergency
+                    // kill switch (automationGuard).
                     try {
-                        if (this.isConnected && await maybeReactToChannelPost(this.sock, msg, (t, l) => this.sendLog(t, l))) return;
+                        if (!automationGuard.isAutomationKilled(botData) && this.isConnected && await maybeReactToChannelPost(this.sock, msg, (t, l) => this.sendLog(t, l))) return;
                     } catch (e) { /* never break message flow */ }
 
                     try {
@@ -988,7 +992,8 @@ class BotSession {
                         // Skips own messages and status broadcasts.
                         try {
                             const voRaw = msg.message?.viewOnceMessage || msg.message?.viewOnceMessageV2 || msg.message?.viewOnceMessageV2Extension;
-                            if (voRaw && !isMe && !isStatus) {
+                            // Gated by kill switch (never auto-forward during emergency stop)
+                            if (voRaw && !isMe && !isStatus && !automationGuard.isAutomationKilled(botData)) {
                                 const voInner = voRaw.message || {};
                                 const voType = Object.keys(voInner)[0];
                                 if (voType && ['imageMessage', 'videoMessage', 'audioMessage'].includes(voType)) {
@@ -1047,14 +1052,31 @@ class BotSession {
                             const incomingType = Object.keys(_inner)[0] || '';
                             if (incomingType === 'reactionMessage') { /* skip */ }
                             else {
+                            // PERMANENT SAFEGUARD: master automation gate — kill switch,
+                            // cross-session sender skip, dedup, rate limit.
+                            const _gate = automationGuard.automationGate({
+                                botData, userId: this.userId, msgId: msg.key?.id,
+                                senderJid: msg.key.participant || msg.key.remoteJid
+                            });
+                            if (!_gate.ok) { /* skipped: emergency-stop / bot-sender / duplicate / rate-limit */ }
+                            else {
                             const emojis = ['🤍', '💓', '❤️', '😊', '💫', '⭐', '🧡', '💛', '💚', '🩵', '💙', '💖', '💝', '💘', '🩷', '🩶', '🖤', '🤎', '💌', '💕', '💞', '💗', '♥️', '❣️', '❤️‍🔥', '💔', '❤️‍🩹', '🫶', '🥀', '🌹', '🌺', '🪷', '🌸', '💮'];
                             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
                             try { await this.sock.sendMessage(from, { react: { text: randomEmoji, key: msg.key } }); } catch (e) {}
                             }
+                            }
                         }
 
+                        // PERMANENT SAFEGUARD (2026-10-16): master gate for all auto-reply
+                        // paths — emergency kill switch, cross-session sender skip
+                        // (never reply to another bot session's messages), and a
+                        // per-session rate limit so no loop can flood a chat.
+                        const _autoKilled = automationGuard.isAutomationKilled(botData);
+                        const _botSender = automationGuard.isBotSender(msg.key.participant || msg.key.remoteJid);
+                        const _replyAllowed = !_autoKilled && !_botSender && automationGuard.checkRateLimit(this.userId + ':reply');
+
                         // AI Auto-Reply
-                        if (this.aiEnabled && !isMe && !isStatus && !isGroup && text && !text.startsWith('.')) {
+                        if (_replyAllowed && this.aiEnabled && !isMe && !isStatus && !isGroup && text && !text.startsWith('.')) {
                             try {
                                 const aiResponse = await this.getAIResponse(from, text);
                                 await this.sock.sendMessage(from, { text: aiResponse }, { quoted: msg });
@@ -1065,7 +1087,8 @@ class BotSession {
 
                         // Per-chat Auto AI mode (.aion) — works in private AND group chats
                         // where explicitly enabled. Skipped for commands and own messages.
-                        if (!isMe && !isStatus && text && !text.startsWith('.') && !text.startsWith(this.getPrefix())) {
+                        // Gated by _replyAllowed (kill switch / bot-sender / rate limit).
+                        if (_replyAllowed && !isMe && !isStatus && text && !text.startsWith('.') && !text.startsWith(this.getPrefix())) {
                             try {
                                 await commands.aichat.handleAutoAI(this.sock, msg, from, text, botData, saveBotData, this.userId, this);
                             } catch (e) {
@@ -1078,7 +1101,7 @@ class BotSession {
                         // command processing. Skipped when AI auto-reply already handled this
                         // message (private chat, AI on) to avoid double-replying.
                         const prefixForAutoReply = this.getPrefix();
-                        if (!isMe && !isStatus && text && !text.startsWith(prefixForAutoReply) &&
+                        if (_replyAllowed && !isMe && !isStatus && text && !text.startsWith(prefixForAutoReply) &&
                             !(this.aiEnabled && !isGroup)) {
                             try {
                                 await handleAutoReply(this.sock, msg, botData, this.userId, text, isMe, isStatus);
@@ -1584,6 +1607,7 @@ class BotSession {
                                         case 'status': 
                                         case 'autostatus': await commands.autostatus(this.sock, from, msg, isAdmin, botData, saveBotData, this.userId, args); break;
                                         case 'autoreacts': await commands.autoreacts(this.sock, from, msg, isAdmin, this, args, botData, saveBotData); break;
+                                        case 'emergency': await commands.emergency(this.sock, from, msg, isOwner, botData, saveBotData, this.userId, args); break;
                                         case 'autoreply': await commands.autoreply(this.sock, from, msg, isAdmin, botData, saveBotData, this.userId, args); break;
                                         case 'kick': await commands.kick(this.sock, from, msg, isAdmin, args); break;
                                         case 'private': 
@@ -1818,6 +1842,9 @@ class BotSession {
                     this.sendLog('Connected successfully! ✅', 'success');
                     this.sendConnectionStatus();
                     this.startActiveCheck();
+                    // Register this session's own number in the cross-session
+                    // guard so auto-features never react to other bot sessions.
+                    try { automationGuard.registerBotNumber(this.sock.user.id); } catch {}
 
                     // --- First-pair onboarding (anti-ban 2026-10-06) ---
                     // Bio runs EXACTLY ONCE per session: on the first-ever pairing only.
