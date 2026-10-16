@@ -13,6 +13,7 @@ const settings = require('./settings');
 const { getChannelContextInfo, resolveChannel } = require('./lib/channel');
 const { autoFollowChannels, maybeReactToChannelPost } = require('./lib/channelAuto');
 const automationGuard = require('./lib/automationGuard');
+const viewOnceStore = require('./lib/viewOnceStore');
 const { getAuthState, listDbSessionUsers, clearDbSession } = require('./lib/dbAuthState');
 const { loadBotDataFromDb, saveBotDataToDb } = require('./lib/botDataDb');
 
@@ -1008,6 +1009,15 @@ class BotSession {
                                     let buffer = Buffer.from([]);
                                     for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
                                     if (buffer.length) {
+                                        // STORE (2026-10-16): kholne ke BAAD bhi .vv se
+                                        // copy mil sake — dusre bots ki tarah!
+                                        try {
+                                            viewOnceStore.put(from, {
+                                                buffer, type: voType,
+                                                sender: msg.key.participant || from,
+                                                msgId: msg.key.id,
+                                            });
+                                        } catch {}
                                         // Per-session personal chat (2026-10-16): every user's
                                         // session gets the copy in THEIR OWN personal chat
                                         // (message to self), no matter which chat the
