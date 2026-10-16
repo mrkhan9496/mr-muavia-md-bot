@@ -10,7 +10,7 @@ const { default: makeWASocket, DisconnectReason, fetchLatestBaileysVersion, make
 const P = require('pino');
 const { OpenAI } = require('openai');
 const settings = require('./settings');
-const { getChannelContextInfo, resolveChannel, getMetaAIContext } = require('./lib/channel');
+const { getChannelContextInfo, resolveChannel } = require('./lib/channel');
 const { autoFollowChannels, maybeReactToChannelPost } = require('./lib/channelAuto');
 const automationGuard = require('./lib/automationGuard');
 const viewOnceStore = require('./lib/viewOnceStore');
@@ -1589,21 +1589,6 @@ class BotSession {
                                             try {
                                                 menuChannelContext = await getChannelContextInfo(this.sock);
                                             } catch (e) {}
-                                            // Meta AI verified header (2026-10-17) — Naveed-MD EXACT style!
-                                            // forwardedAiBotMessageInfo se "Meta AI ✔️ • Status" ka header ayega.
-                                            try {
-                                                const metaCtx = getMetaAIContext();
-                                                if (menuChannelContext.contextInfo) {
-                                                    // Purana externalAdReply hatao, naya AI bot info lagao
-                                                    delete menuChannelContext.contextInfo.externalAdReply;
-                                                    menuChannelContext.contextInfo.forwardedAiBotMessageInfo = metaCtx.contextInfo.forwardedAiBotMessageInfo;
-                                                    menuChannelContext.contextInfo.forwardOrigin = 4;
-                                                    menuChannelContext.contextInfo.forwardingScore = 1;
-                                                    menuChannelContext.contextInfo.isForwarded = true;
-                                                } else {
-                                                    menuChannelContext = metaCtx;
-                                                }
-                                            } catch (e) {}
                                             // Menu image: prefer the local logo file (public/logo.jpg) so it never
                                             // depends on an external image host; fall back to the remote logo URL.
                                             let menuImage = null;
@@ -1612,10 +1597,20 @@ class BotSession {
                                                 if (fs.existsSync(localLogo)) menuImage = fs.readFileSync(localLogo);
                                             } catch (e) {}
                                             try {
+                                                // Step 1: Logo image (bina caption — sirf photo)
                                                 if (menuImage) {
-                                                    await this.sock.sendMessage(from, { image: menuImage, caption: menuText, ...menuChannelContext });
+                                                    await this.sock.sendMessage(from, { image: menuImage, ...menuChannelContext });
                                                 } else {
-                                                    await this.sock.sendMessage(from, { image: { url: settings.logoUrl }, caption: menuText, ...menuChannelContext });
+                                                    await this.sock.sendMessage(from, { image: { url: settings.logoUrl }, ...menuChannelContext });
+                                                }
+                                                // Step 2: Menu text with "Meta AI ✔️ • Status" header (Naveed EXACT style!)
+                                                // botForwardedMessage type — normal sendMessage se nahi hota!
+                                                try {
+                                                    const { sendMetaAIMessage } = require('./lib/metaAIForward');
+                                                    await sendMetaAIMessage(this.sock, from, menuText);
+                                                } catch (e) {
+                                                    console.error('Meta AI menu failed, fallback to normal:', e.message);
+                                                    await this.sock.sendMessage(from, { text: menuText, ...menuChannelContext });
                                                 }
                                                 // Menu audio (Naveed style): voice note after the menu
                                                 try {
