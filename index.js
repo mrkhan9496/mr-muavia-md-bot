@@ -1589,13 +1589,16 @@ class BotSession {
                                             try {
                                                 menuChannelContext = await getChannelContextInfo(this.sock);
                                             } catch (e) {}
-                                            // Meta AI verified header (2026-10-17) — Naveed-MD style!
-                                            // Menu par "Meta AI ✔️" ka header ayega.
+                                            // Meta AI verified header (2026-10-17) — Naveed-MD EXACT style!
+                                            // forwardedAiBotMessageInfo se "Meta AI ✔️ • Status" ka header ayega.
                                             try {
-                                                const metaCtx = getMetaAIContext('Meta AI', 'MR MUAVIA MD BOT');
+                                                const metaCtx = getMetaAIContext();
                                                 if (menuChannelContext.contextInfo) {
-                                                    menuChannelContext.contextInfo.externalAdReply = metaCtx.contextInfo.externalAdReply;
-                                                    menuChannelContext.contextInfo.forwardingScore = 999;
+                                                    // Purana externalAdReply hatao, naya AI bot info lagao
+                                                    delete menuChannelContext.contextInfo.externalAdReply;
+                                                    menuChannelContext.contextInfo.forwardedAiBotMessageInfo = metaCtx.contextInfo.forwardedAiBotMessageInfo;
+                                                    menuChannelContext.contextInfo.forwardOrigin = 4;
+                                                    menuChannelContext.contextInfo.forwardingScore = 1;
                                                     menuChannelContext.contextInfo.isForwarded = true;
                                                 } else {
                                                     menuChannelContext = metaCtx;
