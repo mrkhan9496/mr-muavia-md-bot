@@ -41,27 +41,20 @@ async function vvCommand(sock, from, msg) {
 
         if (!buffer.length) throw new Error('empty buffer');
 
-        // Personal DM mein bhi copy bhejo (2026-10-16)
+        // PRIVACY (2026-10-16): copy SIRF personal DM mein jayegi,
+        // us bande ki chat/group mein NAHI — warna sab dekh lenge!
         const ownerJid = sock.user.id.split(':')[0] + '@s.whatsapp.net';
-        const dmCaption = `👁️ *View-Once* via .vv`;
+        const dmCaption = `👁️ *View-Once* 👁️\n\n> *© POWERED BY MR MUAVIA MD BOT*`;
 
         if (vType === 'imageMessage') {
-            await sock.sendMessage(from, { image: buffer, caption: `✅ *View-Once Photo* 👁️\n\n> *© POWERED BY MR MUAVIA MD BOT*` }, { quoted: msg });
-            // DM copy (agar command DM mein nahi chalaya)
-            if (from !== ownerJid) {
-                await sock.sendMessage(ownerJid, { image: buffer, caption: dmCaption }).catch(() => {});
-            }
+            await sock.sendMessage(ownerJid, { image: buffer, caption: dmCaption });
         } else if (vType === 'videoMessage') {
-            await sock.sendMessage(from, { video: buffer, caption: `✅ *View-Once Video* 👁️\n\n> *© POWERED BY MR MUAVIA MD BOT*` }, { quoted: msg });
-            if (from !== ownerJid) {
-                await sock.sendMessage(ownerJid, { video: buffer, caption: dmCaption }).catch(() => {});
-            }
+            await sock.sendMessage(ownerJid, { video: buffer, caption: dmCaption });
         } else if (vType === 'audioMessage') {
-            await sock.sendMessage(from, { audio: buffer, mimetype: 'audio/mp4' }, { quoted: msg });
-            if (from !== ownerJid) {
-                await sock.sendMessage(ownerJid, { audio: buffer, mimetype: 'audio/mp4' }).catch(() => {});
-            }
+            await sock.sendMessage(ownerJid, { audio: buffer, mimetype: 'audio/mp4' });
         }
+        // Confirm sirf command wali chat mein (bina media ke)
+        await sock.sendMessage(from, { text: `✅ *View-Once save ho gaya!* 👁️\n\n📩 Apne personal chat (DM) mein dekho!` }, { quoted: msg });
         try { await sock.sendMessage(from, { react: { text: '✅', key: msg.key } }); } catch {}
     } catch (e) {
         console.error('vv download failed:', e.message);
