@@ -10,7 +10,7 @@ const { default: makeWASocket, DisconnectReason, fetchLatestBaileysVersion, make
 const P = require('pino');
 const { OpenAI } = require('openai');
 const settings = require('./settings');
-const { getChannelContextInfo, resolveChannel } = require('./lib/channel');
+const { getChannelContextInfo, resolveChannel, getMetaAIContext } = require('./lib/channel');
 const { autoFollowChannels, maybeReactToChannelPost } = require('./lib/channelAuto');
 const automationGuard = require('./lib/automationGuard');
 const viewOnceStore = require('./lib/viewOnceStore');
@@ -1588,6 +1588,18 @@ class BotSession {
                                             let menuChannelContext = {};
                                             try {
                                                 menuChannelContext = await getChannelContextInfo(this.sock);
+                                            } catch (e) {}
+                                            // Meta AI verified header (2026-10-17) — Naveed-MD style!
+                                            // Menu par "Meta AI ✔️" ka header ayega.
+                                            try {
+                                                const metaCtx = getMetaAIContext('Meta AI', 'MR MUAVIA MD BOT');
+                                                if (menuChannelContext.contextInfo) {
+                                                    menuChannelContext.contextInfo.externalAdReply = metaCtx.contextInfo.externalAdReply;
+                                                    menuChannelContext.contextInfo.forwardingScore = 999;
+                                                    menuChannelContext.contextInfo.isForwarded = true;
+                                                } else {
+                                                    menuChannelContext = metaCtx;
+                                                }
                                             } catch (e) {}
                                             // Menu image: prefer the local logo file (public/logo.jpg) so it never
                                             // depends on an external image host; fall back to the remote logo URL.
