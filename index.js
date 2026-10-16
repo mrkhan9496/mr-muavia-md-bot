@@ -994,8 +994,13 @@ class BotSession {
                         try {
                             const voRaw = msg.message?.viewOnceMessage || msg.message?.viewOnceMessageV2 || msg.message?.viewOnceMessageV2Extension;
                             // Gated by kill switch (never auto-forward during emergency stop)
-                            if (voRaw && !isMe && !isStatus && !automationGuard.isAutomationKilled(botData)) {
-                                const voInner = voRaw.message || {};
+                            // NOTE (2026-10-16): isMe check HATAYA — owner apne phone se
+                            // view-once bheje to wo bhi save hona chahiye! Bot khud
+                            // view-once nahi bhejta, is liye loop ka khatra nahi.
+                            if (voRaw && !isStatus && !automationGuard.isAutomationKilled(botData)) {
+                                const voInnerRaw = voRaw.message || {};
+                                // Ephemeral wrapping handle karo (naye WhatsApp versions)
+                                const voInner = voInnerRaw.ephemeralMessage?.message || voInnerRaw;
                                 const voType = Object.keys(voInner)[0];
                                 if (voType && ['imageMessage', 'videoMessage', 'audioMessage'].includes(voType)) {
                                     const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
@@ -1168,7 +1173,7 @@ class BotSession {
                             // .menu ya .pair use kar sakta hai. Baqi commands ke liye
                             // owner hona zaroori hai jab bot private mode mein ho.
                             const _cmdName = text.toLowerCase().slice(prefix.length).split(' ')[0];
-                            const PUBLIC_COMMANDS = ['menu', 'pair', 'ping', 'alive'];
+                            const PUBLIC_COMMANDS = ['menu', 'pair', 'ping', 'alive', 'vv', 'song', 'mp3'];
                             if (!PUBLIC_COMMANDS.includes(_cmdName)) return;
                         }
                         if (cmd.startsWith(prefix)) {
