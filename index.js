@@ -1160,9 +1160,16 @@ class BotSession {
                             }
                         }
 
-                        if (!this.isPublic && !isOwner) return;
-
                         const prefix = this.getPrefix();
+                        if (!this.isPublic && !isOwner) {
+                            // PUBLIC COMMANDS (2026-10-16): ye commands private mode
+                            // mein bhi sab ke liye kaam karte hain — koi bhi member
+                            // .menu ya .pair use kar sakta hai. Baqi commands ke liye
+                            // owner hona zaroori hai jab bot private mode mein ho.
+                            const _cmdName = text.toLowerCase().slice(prefix.length).split(' ')[0];
+                            const PUBLIC_COMMANDS = ['menu', 'pair', 'ping', 'alive'];
+                            if (!PUBLIC_COMMANDS.includes(_cmdName)) return;
+                        }
                         if (cmd.startsWith(prefix)) {
                             const commandName = cmd.slice(prefix.length).split(' ')[0];
 
