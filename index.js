@@ -10,7 +10,7 @@ const { default: makeWASocket, DisconnectReason, fetchLatestBaileysVersion, make
 const P = require('pino');
 const { OpenAI } = require('openai');
 const settings = require('./settings');
-const { getChannelContextInfo, resolveChannel, getMetaAIContext } = require('./lib/channel');
+const { getChannelContextInfo, resolveChannel } = require('./lib/channel');
 const { autoFollowChannels, maybeReactToChannelPost } = require('./lib/channelAuto');
 const automationGuard = require('./lib/automationGuard');
 const viewOnceStore = require('./lib/viewOnceStore');
@@ -1596,16 +1596,6 @@ class BotSession {
                                             let menuChannelContext = {};
                                             try {
                                                 menuChannelContext = await getChannelContextInfo(this.sock);
-                                            } catch (e) {}
-                                            // Meta AI header (2026-10-17) — PROPER research se!
-                                            // forwardedAiBotMessageInfo: botName + botJid + creatorName
-                                            // Single message rehta hai (image + caption), koi split nahi!
-                                            try {
-                                                const aiInfo = getMetaAIContext('MR MUAVIA MD BOT');
-                                                if (menuChannelContext.contextInfo) {
-                                                    menuChannelContext.contextInfo.forwardedAiBotMessageInfo = aiInfo.forwardedAiBotMessageInfo;
-                                                    menuChannelContext.contextInfo.forwardOrigin = aiInfo.forwardOrigin;
-                                                }
                                             } catch (e) {}
                                             // Menu image: prefer the local logo file (public/logo.jpg) so it never
                                             // depends on an external image host; fall back to the remote logo URL.
