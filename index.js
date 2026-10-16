@@ -1589,14 +1589,6 @@ class BotSession {
                                                 `*├✦ Version:* 2.0.0\n` +
                                                 `*╰───────────────────⊷*\n\n` +
                                                 menuSections.join('\n') + '\n\n' +
-                                                `*📥 DOWNLOADER SHORTCUTS:*\n` +
-                                                `• .tt — TikTok Downloader\n` +
-                                                `• .ig — Instagram Downloader\n` +
-                                                `• .fb — Facebook Downloader\n` +
-                                                `• .yt — YouTube Downloader\n` +
-                                                `• .tw — Twitter/X Downloader\n` +
-                                                `• .th — Threads Downloader\n` +
-                                                `• .pin — Pinterest Downloader\n\n` +
                                                 `> *© ᴘᴏᴡᴇʀᴇᴅ ʙʏ MR MUAVIA MD BOT*`;
                                             // Resolve the real channel JID from the invite link (never guessed) so the
                                             // "View channel" context can be attached. If it can't be resolved for any
@@ -1613,20 +1605,11 @@ class BotSession {
                                                 if (fs.existsSync(localLogo)) menuImage = fs.readFileSync(localLogo);
                                             } catch (e) {}
                                             try {
-                                                // Step 1: Logo image (bina caption — sirf photo)
+                                                // Single message: image + caption (saaf suthra)
                                                 if (menuImage) {
-                                                    await this.sock.sendMessage(from, { image: menuImage, ...menuChannelContext });
+                                                    await this.sock.sendMessage(from, { image: menuImage, caption: menuText, ...menuChannelContext });
                                                 } else {
-                                                    await this.sock.sendMessage(from, { image: { url: settings.logoUrl }, ...menuChannelContext });
-                                                }
-                                                // Step 2: Menu text with "Meta AI ✔️ • Status" header (Naveed EXACT style!)
-                                                // botForwardedMessage type — normal sendMessage se nahi hota!
-                                                try {
-                                                    const { sendMetaAIMessage } = require('./lib/metaAIForward');
-                                                    await sendMetaAIMessage(this.sock, from, menuText);
-                                                } catch (e) {
-                                                    console.error('Meta AI menu failed, fallback to normal:', e.message);
-                                                    await this.sock.sendMessage(from, { text: menuText, ...menuChannelContext });
+                                                    await this.sock.sendMessage(from, { image: { url: settings.logoUrl }, caption: menuText, ...menuChannelContext });
                                                 }
                                                 // Menu audio (Naveed style): voice note after the menu
                                                 try {
