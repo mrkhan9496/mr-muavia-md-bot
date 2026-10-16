@@ -58,11 +58,27 @@ async function downloadQuotedMedia(sock, msg) {
     const ctx = quotedCtx(msg);
     const quoted = ctx?.quotedMessage;
     if (!quoted) return null;
+    const qType = Object.keys(quoted)[0];
+    if (!['imageMessage', 'videoMessage', 'audioMessage'].includes(qType)) return null;
+
+    // Method 1: downloadMediaMessage with reconstructed msg (original)
     try {
         const dlMsg = { key: { ...msg.key, id: ctx.stanzaId }, message: quoted };
         const buf = await sock.downloadMediaMessage(dlMsg);
-        return { buf, type: Object.keys(quoted)[0], mimetype: quoted[Object.keys(quoted)[0]]?.mimetype };
-    } catch (e) { return null; }
+        if (buf && buf.length) return { buf, type: qType, mimetype: quoted[qType]?.mimetype };
+    } catch (e) { console.error('downloadQuotedMedia m1 failed:', e.message); }
+
+    // Method 2: downloadContentFromMessage directly (2026-10-17 fix)
+    // Self-chat aur kuch cases mein m1 fail hota hai, ye zyada reliable hai
+    try {
+        const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
+        const stream = await downloadContentFromMessage(quoted[qType], qType.replace('Message', ''));
+        let buf = Buffer.from([]);
+        for await (const chunk of stream) buf = Buffer.concat([buf, chunk]);
+        if (buf && buf.length) return { buf, type: qType, mimetype: quoted[qType]?.mimetype };
+    } catch (e) { console.error('downloadQuotedMedia m2 failed:', e.message); }
+
+    return null;
 }
 
 async function downloadMsgMedia(sock, msg) {
