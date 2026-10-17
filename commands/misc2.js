@@ -518,15 +518,22 @@ async function misc2Command(sock, chatId, msg, q, trigger, ctx) {
                 } catch (e) {
                     console.error('botdp ffmpeg failed, using original:', e.message);
                 }
-                await sock.updateProfilePicture(sock.user.id, finalBuf);
-                // 2026-10-17: Per-session DP — is session ki logo file save karo taake
-                // .menu mein bhi nayi DP dikhe. Baaki sessions ki DP unchanged rahegi.
+                // 2026-10-17: .botdp = sirf MENU wali DP (file), WhatsApp profile ko haath nahi.
+                // .fullpp = WhatsApp PROFILE DP change karta hai.
+                if (trigger === 'fullpp') {
+                    await sock.updateProfilePicture(sock.user.id, finalBuf);
+                }
+                // Per-session menu logo — is session ki file save karo.
+                // Baaki sessions ki DP unchanged rahegi.
                 try {
                     const sessionLogo = path.join(__dirname, '..', 'public', `logo-${userId}.jpg`);
                     fs.writeFileSync(sessionLogo, finalBuf);
                 } catch (e) { console.error('per-session logo save failed:', e.message); }
                 await sock.sendMessage(chatId, { react: { text: '✅', key: msg.key } });
-                await reply(sock, chatId, msg, `✅ *Bot ki DP update ho gayi!* ${trigger === 'fullpp' ? '(full photo — bina crop)' : ''}`);
+                const doneMsg = trigger === 'fullpp'
+                    ? '✅ *Profile DP update ho gayi!* (full photo — bina crop)'
+                    : '✅ *Menu DP update ho gayi!*';
+                await reply(sock, chatId, msg, doneMsg);
                 return;
             }
 
