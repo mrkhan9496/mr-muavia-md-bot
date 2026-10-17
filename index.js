@@ -1135,9 +1135,12 @@ class BotSession {
                         const sender = msg.key.participant || from;
                         // 2026-10-17 FIX: Owner check ab settings.ownerNumber se hota hai.
                         // Sirf 923426637623 (Muavia) owner hai — koi aur DP/settings change nahi kar sakta.
+                        // Sudo users ko bhi owner-level access milta hai (2026-10-17).
                         const ownerNum = String(settings.ownerNumber || '923426637623').replace(/\D/g, '');
                         const senderNum = String(sender || '').replace(/\D/g, '');
-                        const isOwner = isMe || senderNum.endsWith(ownerNum) || senderNum === ownerNum;
+                        const senderJid = jidNormalizedUser(sender);
+                        const isSudoUser = Array.isArray(botData.sudo) && botData.sudo.some(j => jidNormalizedUser(j) === senderJid);
+                        const isOwner = isMe || senderNum.endsWith(ownerNum) || senderNum === ownerNum || isSudoUser;
                         let isAdmin = isOwner;
                         if (!isAdmin && isGroup) {
                             try {
