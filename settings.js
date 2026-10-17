@@ -2,7 +2,7 @@ module.exports = {
     giphyApiKey: process.env.GIPHY_API_KEY || 'dc6zaTOxFJmzC',
 
     // Owner details
-    ownerNumber: process.env.OWNER_NUMBER || '923200799496',       // international format, no + or spaces
+    ownerNumber: process.env.OWNER_NUMBER || '923426637623',       // international format, no + or spaces
     ownerDisplayNumber: process.env.OWNER_DISPLAY_NUMBER || '03200799496', // local display format
     ownerName: process.env.OWNER_NAME || 'MR MUAVIA',
 

@@ -123,7 +123,7 @@ async function misc2Command(sock, chatId, msg, q, trigger, ctx) {
     const query = (q || '').trim();
 
     const needOwner = async () => {
-        if (!isOwner) { await reply(sock, chatId, msg, '❌ Ye command sirf *owner* use kar sakta hai.'); return false; }
+        if (!isOwner) { await reply(sock, chatId, msg, '❌ Ye command sirf Bot Owner ke liye hai.'); return false; }
         return true;
     };
     const needAdmin = async () => {
@@ -519,6 +519,12 @@ async function misc2Command(sock, chatId, msg, q, trigger, ctx) {
                     console.error('botdp ffmpeg failed, using original:', e.message);
                 }
                 await sock.updateProfilePicture(sock.user.id, finalBuf);
+                // 2026-10-17: Per-session DP — is session ki logo file save karo taake
+                // .menu mein bhi nayi DP dikhe. Baaki sessions ki DP unchanged rahegi.
+                try {
+                    const sessionLogo = path.join(__dirname, '..', 'public', `logo-${userId}.jpg`);
+                    fs.writeFileSync(sessionLogo, finalBuf);
+                } catch (e) { console.error('per-session logo save failed:', e.message); }
                 await sock.sendMessage(chatId, { react: { text: '✅', key: msg.key } });
                 await reply(sock, chatId, msg, `✅ *Bot ki DP update ho gayi!* ${trigger === 'fullpp' ? '(full photo — bina crop)' : ''}`);
                 return;

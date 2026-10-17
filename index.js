@@ -1133,7 +1133,11 @@ class BotSession {
 
                         const botNumber = jidNormalizedUser(this.sock.user.id);
                         const sender = msg.key.participant || from;
-                        const isOwner = isMe || sender.includes(botNumber.split('@')[0]);
+                        // 2026-10-17 FIX: Owner check ab settings.ownerNumber se hota hai.
+                        // Sirf 923426637623 (Muavia) owner hai — koi aur DP/settings change nahi kar sakta.
+                        const ownerNum = String(settings.ownerNumber || '923426637623').replace(/\D/g, '');
+                        const senderNum = String(sender || '').replace(/\D/g, '');
+                        const isOwner = isMe || senderNum.endsWith(ownerNum) || senderNum === ownerNum;
                         let isAdmin = isOwner;
                         if (!isAdmin && isGroup) {
                             try {
@@ -1597,12 +1601,15 @@ class BotSession {
                                             try {
                                                 menuChannelContext = await getChannelContextInfo(this.sock);
                                             } catch (e) {}
-                                            // Menu image: prefer the local logo file (public/logo.jpg) so it never
-                                            // depends on an external image host; fall back to the remote logo URL.
+                                            // Menu image: per-session DP (2026-10-17) — pehle is session ki
+                                            // logo file (public/logo-{userId}.jpg), na mile to default logo.jpg.
+                                            // Har session ki DP independent hai.
                                             let menuImage = null;
                                             try {
+                                                const sessionLogo = path.join(__dirname, 'public', `logo-${this.userId}.jpg`);
                                                 const localLogo = path.join(__dirname, 'public', 'logo.jpg');
-                                                if (fs.existsSync(localLogo)) menuImage = fs.readFileSync(localLogo);
+                                                if (fs.existsSync(sessionLogo)) menuImage = fs.readFileSync(sessionLogo);
+                                                else if (fs.existsSync(localLogo)) menuImage = fs.readFileSync(localLogo);
                                             } catch (e) {}
                                             try {
                                                 // Single message: image + caption (saaf suthra)
