@@ -379,15 +379,6 @@ async function misc2Command(sock, chatId, msg, q, trigger, ctx) {
                 return;
             }
 
-            case 'botname': {
-                if (!(await needOwner())) return;
-                if (!query) { await reply(sock, chatId, msg, `🤖 *Bot name:* ${botData.botName || 'set nahi'}\n\nUse: .botname <naya naam>`); return; }
-                botData.botName = query;
-                saveBotData();
-                await reply(sock, chatId, msg, `✅ *Bot name set:* ${query}`);
-                return;
-            }
-
             case 'ownername': {
                 if (!(await needOwner())) return;
                 if (!query) { await reply(sock, chatId, msg, `👑 *Owner name:* ${botData.ownerName || 'set nahi'}\n\nUse: .ownername <naam>`); return; }
@@ -499,27 +490,33 @@ async function misc2Command(sock, chatId, msg, q, trigger, ctx) {
                 }
                 await sock.sendMessage(chatId, { react: { text: '⏳', key: msg.key } });
                 let finalBuf = media.buf;
-                if (trigger === 'fullpp') {
-                    // FULL-DP (2026-10-16): poori photo bina crop — 640x640 square
-                    // canvas, blurred background, asli photo centered.
-                    try {
-                        const { execFile } = require('child_process');
-                        const { promisify } = require('util');
-                        const execFileAsync = promisify(execFile);
-                        const os = require('os');
-                        const tmpIn = path.join(os.tmpdir(), `fullpp_${Date.now()}.jpg`);
-                        const tmpOut = path.join(os.tmpdir(), `fullpp_${Date.now()}_sq.jpg`);
-                        fs.writeFileSync(tmpIn, media.buf);
-                        const vf = 'split[a][b];' +
+                // 2026-10-17 FIX: WhatsApp raw image ko silently reject kar deta hai.
+                // Dono commands ke liye ffmpeg se proper 640x640 JPEG banao.
+                try {
+                    const { execFile } = require('child_process');
+                    const { promisify } = require('util');
+                    const execFileAsync = promisify(execFile);
+                    const os = require('os');
+                    const tmpIn = path.join(os.tmpdir(), `botdp_${Date.now()}.jpg`);
+                    const tmpOut = path.join(os.tmpdir(), `botdp_${Date.now()}_sq.jpg`);
+                    fs.writeFileSync(tmpIn, media.buf);
+                    let vf;
+                    if (trigger === 'fullpp') {
+                        // FULL-DP: poori photo bina crop — 640x640 square
+                        // canvas, blurred background, asli photo centered.
+                        vf = 'split[a][b];' +
                             '[a]scale=640:640:force_original_aspect_ratio=increase,crop=640:640,boxblur=20[bg];' +
                             '[b]scale=640:640:force_original_aspect_ratio=decrease[fg];' +
                             '[bg][fg]overlay=(W-w)/2:(H-h)/2';
-                        await execFileAsync('ffmpeg', ['-y', '-i', tmpIn, '-vf', vf, '-frames:v', '1', '-q:v', '3', tmpOut]);
-                        finalBuf = fs.readFileSync(tmpOut);
-                        try { fs.unlinkSync(tmpIn); fs.unlinkSync(tmpOut); } catch {}
-                    } catch (e) {
-                        console.error('fullpp ffmpeg failed, using original:', e.message);
+                    } else {
+                        // BOTDP: standard square crop — 640x640 JPEG
+                        vf = 'scale=640:640:force_original_aspect_ratio=increase,crop=640:640';
                     }
+                    await execFileAsync('ffmpeg', ['-y', '-i', tmpIn, '-vf', vf, '-frames:v', '1', '-q:v', '3', tmpOut]);
+                    finalBuf = fs.readFileSync(tmpOut);
+                    try { fs.unlinkSync(tmpIn); fs.unlinkSync(tmpOut); } catch {}
+                } catch (e) {
+                    console.error('botdp ffmpeg failed, using original:', e.message);
                 }
                 await sock.updateProfilePicture(sock.user.id, finalBuf);
                 await sock.sendMessage(chatId, { react: { text: '✅', key: msg.key } });
@@ -642,7 +639,7 @@ module.exports.TRIGGERS = [
     // presence
     'recording', 'autotyping', 'online', 'autoreact',
     // bot settings
-    'mode', 'botname', 'ownername', 'description', 'stickername',
+    'mode', 'ownername', 'description', 'stickername',
     // welcome / goodbye
     'welcome', 'setwelcome', 'goodbye', 'setgoodbye',
     // profile
