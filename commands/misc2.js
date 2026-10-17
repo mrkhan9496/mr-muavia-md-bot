@@ -310,6 +310,40 @@ async function misc2Command(sock, chatId, msg, q, trigger, ctx) {
                 return;
             }
 
+            // 2026-10-18: New contact auto-reply toggle + customize (owner only)
+            case 'newwelcome': {
+                if (!(await needOwner())) return;
+                const arg = (query || '').toLowerCase().trim();
+                if (!botData.newContactEnabled) botData.newContactEnabled = {};
+                if (arg === 'on') {
+                    botData.newContactEnabled[userId] = true;
+                    saveBotData();
+                    await reply(sock, chatId, msg, '✅ *New contact welcome ON!*\nNaye bande ko auto SMS jayega.');
+                } else if (arg === 'off') {
+                    botData.newContactEnabled[userId] = false;
+                    saveBotData();
+                    await reply(sock, chatId, msg, '❌ *New contact welcome OFF!*');
+                } else {
+                    const st = botData.newContactEnabled[userId] !== false ? 'ON' : 'OFF';
+                    await reply(sock, chatId, msg, `📲 *New Contact Welcome:* ${st}\n\nUse: .newwelcome on / off\nCustomize: .setnewwelcome <text>`);
+                }
+                return;
+            }
+
+            case 'setnewwelcome': {
+                if (!(await needOwner())) return;
+                if (!query || !query.trim()) {
+                    const cur = botData.newContactMsg?.[userId] || '📲 Please save my number and reply DONE ✅\n💚 Thank you for connecting with MR MUAVIA MD BOT!';
+                    await reply(sock, chatId, msg, `📝 *Current welcome message:*\n\n${cur}\n\nChange: .setnewwelcome <naya text>`);
+                    return;
+                }
+                if (!botData.newContactMsg) botData.newContactMsg = {};
+                botData.newContactMsg[userId] = query.trim();
+                saveBotData();
+                await reply(sock, chatId, msg, '✅ *Welcome message update ho gaya!*');
+                return;
+            }
+
             // ============================ PRESENCE FLAGS ============================
 
             case 'recording':
@@ -648,7 +682,7 @@ module.exports.TRIGGERS = [
     // search / info
     'yts', 'npm', 'id', 'getlid', 'getbio', 'getprivacy', 'privacy', 'blocklist',
     // sudo
-    'sudo', 'delsudo', 'listsudo',
+    'sudo', 'delsudo', 'listsudo', 'newwelcome', 'setnewwelcome',
     // presence
     'recording', 'autotyping', 'online', 'autoreact',
     // bot settings
